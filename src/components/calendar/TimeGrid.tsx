@@ -20,8 +20,9 @@ export const MIN_BLOCK = 10
 type Mode = 'move' | 'resize-start' | 'resize-end'
 
 type DragState =
-  | { mode: Mode; id: string; grabOffsetMin: number }
-  | { mode: 'create'; anchorMin: number; dayIndex: number; moved: boolean }
+  /** `down` is the block's cascade offset, so pointer maths stays in the same frame. */
+  | { mode: Mode; id: string; grabOffsetMin: number; down: number }
+  | { mode: 'create'; anchorMin: number; dayIndex: number; moved: boolean; down: number }
   | null
 
 export type TimeGridProps = {
@@ -81,9 +82,13 @@ export function TimeGrid({
   const [dropAt, setDropAt] = useState<{ day: number; start: number; payload: DropPayload } | null>(null)
 
   /**
-   * Cascade geometry per block: how far it is inset from the right edge and
-   * which layer it paints on. The selected block is pulled to the front of its
-   * cluster so clicking a sliver promotes it instead of hiding it.
+   * Cascade geometry per block: how far it steps down and right inside its
+   * overlap cluster, which layer it paints on, and how much of it is actually
+   * visible once the bands above have covered their share.
+   *
+   * Bands are chronological: each slot starts a little lower than the one
+   * before, keeps the full column width, and paints over the band above, so all
+   * of them stay readable instead of being squeezed into narrow lanes.
    */
   const cascade = useMemo(() => {
     const byCluster = new Map<number, Positioned[]>()
@@ -92,19 +97,31 @@ export function TimeGrid({
       if (group) group.push(item)
       else byCluster.set(item.cluster, [item])
     }
-    const out = new Map<string, { inset: number; layer: number; behind: number }>()
+    const out = new Map<string, { down: number; right: number; z: number; visible: number }>()
     for (const group of byCluster.values()) {
-      const selected = group.find((g) => g.id === selectedId)
-      // `items` arrives least important first, so the last entry is the front.
-      const ordered = selected ? [...group.filter((g) => g !== selected), selected] : group
-      const n = ordered.length
-      const step = n < 2 ? 0 : Math.max(8, Math.min(14, Math.round(64 / (n - 1))))
-      ordered.forEach((item, layer) => {
-        out.set(item.id, { inset: (n - 1 - layer) * step, layer, behind: layer })
+      const n = group.length
+      const height = (g: Positioned) => Math.max(18, ((g.end - g.start) / MIN) * pxPerMin - 3)
+      // Every band steps down by `step`, so the last one absorbs all of them:
+      // cap the step by what it can spare, and the rest stay readable.
+      const step =
+        n < 2 ? 0 : Math.max(0, Math.min(18, (height(group[n - 1]) - 18) / (n - 1)))
+      group.forEach((item, k) => {
+        const down = k * step
+        // A band is covered from the top of the next one down; a later start
+        // buys it extra room before that happens.
+        const next = group[k + 1]
+        const cover = next ? (((next.start - item.start) / MIN) * pxPerMin + step) : 0
+        const own = Math.max(16, height(item) - down)
+        out.set(item.id, {
+          down,
+          right: k * 3,
+          z: k + 1,
+          visible: cover > 0 ? Math.min(own, cover) : own,
+        })
       })
     }
     return out
-  }, [items, selectedId])
+  }, [items, pxPerMin])
 
   // A drag that ends anywhere else (outside the grid) must not leave a ghost.
   useEffect(() => {
@@ -141,11 +158,14 @@ export function TimeGrid({
       if (!cols || !scroll || !d) return
       // Day view centres the columns inside the surface, so hit-testing has to
       // measure the columns themselves rather than the full scroll width.
+      // `rect.top` is the column's *current* viewport top, so it already carries
+      // the scroll: adding scroll.scrollTop here would displace every drag.
       const rect = cols.getBoundingClientRect()
       const colWidth = rect.width / days.length
       const dayIndex = clamp(Math.floor((e.clientX - rect.left) / colWidth), 0, days.length - 1)
-      const y = e.clientY - rect.top + scroll.scrollTop
-      const raw = gridStart + y / pxPerMin
+      // A cascaded block is drawn `down` pixels below its own start time, so
+      // subtract that here or every drag of a stacked block jumps by its offset.
+      const raw = gridStart + (e.clientY - rect.top - d.down) / pxPerMin
 
       if (d.mode === 'create') {
         const cur = snap(raw, snapMin)
@@ -232,7 +252,7 @@ export function TimeGrid({
   }, [gridStart, gridEnd])
 
   const startBlockDrag = useCallback(
-    (e: RPointerEvent, item: Positioned, mode: Mode) => {
+    (e: RPointerEvent, item: Positioned, mode: Mode, down: number) => {
       if (e.button !== 0) return
       e.stopPropagation()
       e.preventDefault()
@@ -241,10 +261,11 @@ export function TimeGrid({
         setDrag({
           mode,
           id: item.id,
+          down,
           grabOffsetMin: clamp(y / pxPerMin, 0, (item.end - item.start) / MIN),
         })
       } else {
-        setDrag({ mode, id: item.id, grabOffsetMin: 0 })
+        setDrag({ mode, id: item.id, down, grabOffsetMin: 0 })
       }
     },
     [pxPerMin],
@@ -255,8 +276,7 @@ export function TimeGrid({
 
   /** Client Y within a column to minutes from `gridStart`. */
   function minutesAt(clientY: number, el: HTMLElement): number {
-    const rect = el.getBoundingClientRect()
-    return gridStart + (clientY - rect.top + (scrollRef.current?.scrollTop ?? 0)) / pxPerMin
+    return gridStart + (clientY - el.getBoundingClientRect().top) / pxPerMin
   }
 
   /** Snapped drop time that keeps the whole block inside the visible grid. */
@@ -339,11 +359,8 @@ export function TimeGrid({
                 }}
                 onPointerDown={(e) => {
                   if (e.target !== e.currentTarget || e.button !== 0) return
-                  const rect = e.currentTarget.getBoundingClientRect()
-                  const raw =
-                    gridStart +
-                    (e.clientY - rect.top + (scrollRef.current?.scrollTop ?? 0)) / pxPerMin
-                  setDrag({ mode: 'create', anchorMin: snap(raw, snapMin), dayIndex, moved: false })
+                  const raw = minutesAt(e.clientY, e.currentTarget)
+                  setDrag({ mode: 'create', anchorMin: snap(raw, snapMin), dayIndex, moved: false, down: 0 })
                   setPreview({ day: dayIndex, start: snap(raw, snapMin), end: snap(raw, snapMin) })
                 }}
               >
@@ -373,21 +390,24 @@ export function TimeGrid({
 
                 {/* blocks */}
                 {dayItems.map((item) => {
-                  const { inset, layer, behind } = cascade.get(item.id) ?? { inset: 0, layer: 0, behind: 0 }
-                  const top = ((item.start - dayStart) / MIN - gridStart) * pxPerMin
-                  const h = Math.max(18, ((item.end - item.start) / MIN) * pxPerMin - 3)
+                  const { down = 0, right = 0, z = 0, visible } = cascade.get(item.id) ?? {}
+                  const top = ((item.start - dayStart) / MIN - gridStart) * pxPerMin + down
+                  const h = Math.max(16, ((item.end - item.start) / MIN) * pxPerMin - 3 - down)
                   const dragging = drag?.mode !== 'create' && drag?.id === item.id
-                  const compact = h < 40
+                  // A thin band only has room for its name, so tighten the
+                  // padding and drop the time line rather than clipping text.
+                  const band = (visible ?? h) < 34
+                  const compact = (visible ?? h) < 40
                   return (
                     <div
                       key={item.id}
                       role="button"
                       tabIndex={0}
-                      aria-label={`${item.title}, ${fmtTime(item.start)} to ${fmtTime(item.end)}${behind ? `, ${behind} stacked behind` : ''}`}
+                      aria-label={`${item.title}, ${fmtTime(item.start)} to ${fmtTime(item.end)}`}
                       className={cn(
-                        'group no-drag block-surface absolute overflow-hidden rounded-[7px] px-[7px] py-[5px] text-left',
+                        'group no-drag block-surface absolute overflow-hidden rounded-[7px] px-[7px] text-left',
+                        band ? 'py-[2px]' : 'py-[5px]',
                         'focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-focus',
-                        inset > 0 && 'block-stacked',
                         item.done && 'opacity-45 saturate-50',
                         dragging ? 'ghost-drag' : 'cursor-grab hover:brightness-[1.08]',
                         selectedId === item.id && 'ring-2 ring-signal/80',
@@ -396,13 +416,13 @@ export function TimeGrid({
                         {
                           top,
                           height: h,
-                          left: 0,
-                          width: `calc(100% - ${inset + 3}px)`,
-                          zIndex: dragging ? 60 : layer,
+                          left: right,
+                          width: `calc(100% - ${right + 3}px)`,
+                          zIndex: dragging ? 60 : z,
                           '--blk': item.color,
                         } as CSSProperties
                       }
-                      onPointerDown={(e) => startBlockDrag(e, item, 'move')}
+                      onPointerDown={(e) => startBlockDrag(e, item, 'move', down)}
                       onKeyDown={(e) => {
                         const step = (e.shiftKey ? 60 : snapMin) * MIN
                         if (e.key === 'Enter') {
@@ -436,7 +456,8 @@ export function TimeGrid({
                       )}
                       <div
                         className={cn(
-                          'truncate text-[11.5px] font-semibold leading-[1.25] text-ink',
+                          'truncate font-semibold leading-[1.25] text-ink',
+                          band ? 'text-[10.5px]' : 'text-[11.5px]',
                           item.done && 'line-through',
                         )}
                       >
@@ -455,20 +476,13 @@ export function TimeGrid({
                         </div>
                       )}
 
-                      {/* only the front card reports the stack */}
-                      {behind > 0 && inset === 0 && h > 30 && (
-                        <span className="mono-clock pointer-events-none absolute bottom-[3px] right-[5px] rounded-full bg-bg/70 px-[4px] text-[8.5px] leading-[13px] text-ink-3">
-                          +{behind}
-                        </span>
-                      )}
-
                       <div
                         className="absolute inset-x-0 top-0 h-[6px] cursor-ns-resize opacity-0 group-hover:opacity-100"
-                        onPointerDown={(e) => startBlockDrag(e, item, 'resize-start')}
+                        onPointerDown={(e) => startBlockDrag(e, item, 'resize-start', down)}
                       />
                       <div
                         className="absolute inset-x-0 bottom-0 h-[6px] cursor-ns-resize opacity-0 group-hover:opacity-100"
-                        onPointerDown={(e) => startBlockDrag(e, item, 'resize-end')}
+                        onPointerDown={(e) => startBlockDrag(e, item, 'resize-end', down)}
                       />
                     </div>
                   )
