@@ -37,7 +37,7 @@ export type TimeGridProps = {
   selectedId?: string | null
   onOpen: (item: CalendarItem) => void
   onMove: (id: string, start: number, end: number) => void
-  onCreate: (day: Date, start: number, end: number, title?: string) => void
+  onCreate: (day: Date, start: number, end: number, title: string) => void
   onContext: (item: CalendarItem, x: number, y: number) => void
   /** Schedules a dragged task or all-day event at a specific time. */
   onDropItem?: (payload: DropPayload, day: Date, startMin: number) => void
@@ -223,8 +223,17 @@ export function TimeGrid({
       if (!d || !p) return
       const day = days[p.day]
       if (d.mode === 'create') {
-        if (d.moved && p.end - p.start >= MIN_BLOCK) onCreate(day, p.start, p.end)
-        else setComposer({ day: d.dayIndex, start: p.start, end: p.start + 30 })
+        const lo = Math.min(p.start, p.end)
+        const hi = Math.max(p.start, p.end)
+        // One gesture, one affordance: whether you clicked or dragged out a
+        // range, the title goes in the field that sits on it. A click has no
+        // length of its own, so it gets the usual half hour.
+        setComposeText('')
+        setComposer({
+          day: p.day,
+          start: lo,
+          end: hi - lo >= MIN_BLOCK ? hi : lo + 30,
+        })
         return
       }
       if (p.end - p.start < MIN_BLOCK) return
@@ -564,7 +573,9 @@ export function TimeGrid({
                         if (composeText.trim()) commitComposer(composer.day, composer.start, composer.end)
                         else setComposer(null)
                       }}
-                      placeholder="What needs this time?"
+                      placeholder={`${fmtTime(atMinutes(day, composer.start))} – ${fmtTime(
+                        atMinutes(day, composer.end),
+                      )}`}
                       className="w-full bg-transparent text-[12px] text-ink outline-none placeholder:text-ink-4"
                     />
                   </div>
