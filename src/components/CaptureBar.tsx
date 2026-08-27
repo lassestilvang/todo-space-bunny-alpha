@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { CornerDownLeft, Plus, Repeat2, Sparkles } from 'lucide-react'
 import { useStore } from '@/lib/store'
-import { atMinutes, fmtDateKey, fmtTime, fromKey } from '@/lib/date'
+import { fmtDateKey, fmtTime } from '@/lib/date'
 import { parseInput, splitEntries, type ParsedInput, type TokenKind } from '@/lib/nlp'
 import { cn } from '@/lib/selectors'
 import { Kbd } from './ui'
@@ -29,17 +29,15 @@ export function CaptureBar() {
   const anchor = useStore((s) => s.ui.anchor)
   const toast = useStore((s) => s.toast)
   const prefill = useStore((s) => s.ui.capturePrefill)
-  const slot = useStore((s) => s.ui.captureSlot)
   const setCapture = useStore((s) => s.setCapture)
 
   useEffect(() => {
     if (!prefill) return
     setText(prefill)
-    // Consume the prefill without closing: the bar is already on screen in the
-    // views that can pre-fill it, and closing would throw the range away.
-    setCapture(true, '', slot)
+    // Consume the prefill without closing the bar: it is already on screen.
+    setCapture(true, '')
     requestAnimationFrame(() => ref.current?.focus())
-  }, [prefill, slot, setCapture])
+  }, [prefill, setCapture])
 
   const parsed = useMemo(() => (text.trim() ? parseInput(text) : null), [text])
 
@@ -78,7 +76,6 @@ export function CaptureBar() {
     const entries = splitEntries(text)
     if (!entries.length) return
     const created: string[] = []
-    let unnamed = 0
     for (const entry of entries) {
       const p = parseInput(entry)
       const projectId = p.projects.map((n) => projectByName.get(n.toLowerCase())).find(Boolean)
@@ -89,49 +86,20 @@ export function CaptureBar() {
       const labelIds = p.labels
         .map((n) => labelByName.get(n.toLowerCase()))
         .filter((x): x is string => !!x)
-      // A range drawn on the grid belongs to the day it was drawn on, and the
-      // parser can only resolve a bare "08:00" against today. So: the drawn day
-      // and range stand unless the user typed a time or a date of their own.
-      const clockOf = (ts: number) => {
-        const d = new Date(ts)
-        return d.getHours() * 60 + d.getMinutes()
-      }
-      const typedDate = p.tokens.some((t) => t.kind === 'date')
-      const fromSlot = !typedDate ? slot : null
-      const typedStart = p.scheduledStart !== undefined ? clockOf(p.scheduledStart) : null
-      const typedEnd = p.scheduledEnd !== undefined ? clockOf(p.scheduledEnd) : null
-      const lo = typedStart !== null ? Math.min(typedStart, typedEnd ?? typedStart) : fromSlot?.start
-      const hi = typedEnd !== null ? Math.max(typedStart ?? typedEnd, typedEnd) : fromSlot?.end
-      const useSlot = fromSlot !== null && lo !== undefined && hi !== undefined && hi > lo
-      const day = useSlot ? fromKey(fromSlot.day) : null
-      const scheduledStart = day ? atMinutes(day, lo!) : p.scheduledStart
-      const scheduledEnd = day ? atMinutes(day, hi!) : p.scheduledEnd
-      const due = useSlot
-        ? fromSlot!.day
-        : (p.due ?? (dateMode === 'pinned' ? anchor : undefined))
-      // A drawn range with no name yet is still the prefill, not a task title.
-      if (fromSlot && /^\d{1,2}:\d{2}\s*[–—-]\s*\d{1,2}:\d{2}$/.test(p.title)) {
-        unnamed++
-        continue
-      }
+      const due = p.due ?? (dateMode === 'pinned' ? anchor : undefined)
       const id = addTask({
         title: p.title,
         projectId: project,
         labelIds,
         priority: p.priority,
         due,
-        dueHasTime: !!scheduledStart,
-        scheduled: scheduledStart ? { start: scheduledStart, end: scheduledEnd! } : null,
-        durationMin: useSlot ? hi! - lo! : p.durationMin,
+        dueHasTime: !!p.scheduledStart,
+        scheduled: p.scheduledStart ? { start: p.scheduledStart, end: p.scheduledEnd! } : null,
+        durationMin: p.durationMin,
         dayPart: p.dayPart,
         recurrence: p.recurrence,
       })
       created.push(id)
-    }
-    if (unnamed > 0 && created.length === 0) {
-      toast({ text: 'Give the block a name first', kind: 'info' })
-      ref.current?.focus()
-      return
     }
     setText('')
     toast({
