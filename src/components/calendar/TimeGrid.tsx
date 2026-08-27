@@ -80,6 +80,32 @@ export function TimeGrid({
   /** Where a dragged task or all-day event would land if released now. */
   const [dropAt, setDropAt] = useState<{ day: number; start: number; payload: DropPayload } | null>(null)
 
+  /**
+   * Cascade geometry per block: how far it is inset from the right edge and
+   * which layer it paints on. The selected block is pulled to the front of its
+   * cluster so clicking a sliver promotes it instead of hiding it.
+   */
+  const cascade = useMemo(() => {
+    const byCluster = new Map<number, Positioned[]>()
+    for (const item of items) {
+      const group = byCluster.get(item.cluster)
+      if (group) group.push(item)
+      else byCluster.set(item.cluster, [item])
+    }
+    const out = new Map<string, { inset: number; layer: number; behind: number }>()
+    for (const group of byCluster.values()) {
+      const selected = group.find((g) => g.id === selectedId)
+      // `items` arrives least important first, so the last entry is the front.
+      const ordered = selected ? [...group.filter((g) => g !== selected), selected] : group
+      const n = ordered.length
+      const step = n < 2 ? 0 : Math.max(8, Math.min(14, Math.round(64 / (n - 1))))
+      ordered.forEach((item, layer) => {
+        out.set(item.id, { inset: (n - 1 - layer) * step, layer, behind: layer })
+      })
+    }
+    return out
+  }, [items, selectedId])
+
   // A drag that ends anywhere else (outside the grid) must not leave a ghost.
   useEffect(() => {
     const onEnd = () => setDropAt(null)
@@ -347,9 +373,7 @@ export function TimeGrid({
 
                 {/* blocks */}
                 {dayItems.map((item) => {
-                  const lane = item.laneWidth
-                  const left = item.col * lane * 100
-                  const width = lane * 100 - 4
+                  const { inset, layer, behind } = cascade.get(item.id) ?? { inset: 0, layer: 0, behind: 0 }
                   const top = ((item.start - dayStart) / MIN - gridStart) * pxPerMin
                   const h = Math.max(18, ((item.end - item.start) / MIN) * pxPerMin - 3)
                   const dragging = drag?.mode !== 'create' && drag?.id === item.id
@@ -359,20 +383,22 @@ export function TimeGrid({
                       key={item.id}
                       role="button"
                       tabIndex={0}
-                      aria-label={`${item.title}, ${fmtTime(item.start)} to ${fmtTime(item.end)}`}
+                      aria-label={`${item.title}, ${fmtTime(item.start)} to ${fmtTime(item.end)}${behind ? `, ${behind} stacked behind` : ''}`}
                       className={cn(
                         'group no-drag block-surface absolute overflow-hidden rounded-[7px] px-[7px] py-[5px] text-left',
                         'focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-focus',
+                        inset > 0 && 'block-stacked',
                         item.done && 'opacity-45 saturate-50',
                         dragging ? 'ghost-drag' : 'cursor-grab hover:brightness-[1.08]',
-                        selectedId === item.id && 'z-10 ring-2 ring-signal/80',
+                        selectedId === item.id && 'ring-2 ring-signal/80',
                       )}
                       style={
                         {
                           top,
                           height: h,
-                          left: `${left}%`,
-                          width: `calc(${width}% - 3px)`,
+                          left: 0,
+                          width: `calc(100% - ${inset + 3}px)`,
+                          zIndex: dragging ? 60 : layer,
                           '--blk': item.color,
                         } as CSSProperties
                       }
@@ -417,16 +443,23 @@ export function TimeGrid({
                         {item.title}
                       </div>
                       {!compact && (
-                        <div className="mono-clock tnum mt-[1px] text-[9.5px] leading-tight text-ink-2">
+                        <div className="mono-clock tnum mt-[1px] truncate text-[9.5px] leading-tight text-ink-2">
                           {fmtTime(item.start)}
                           {h > 56 ? ` – ${fmtTime(item.end)}` : ''}
                         </div>
                       )}
                       {h > 104 && item.kind === 'task' && (
-                        <div className="mono-clock mt-1 flex items-center gap-1 text-[9.5px] text-ink-3">
-                          <Sparkles size={9} />
+                        <div className="mono-clock mt-1 flex items-center gap-1 truncate text-[9.5px] text-ink-3">
+                          <Sparkles size={9} className="shrink-0" />
                           {Math.round((item.end - item.start) / MIN)}m
                         </div>
+                      )}
+
+                      {/* only the front card reports the stack */}
+                      {behind > 0 && inset === 0 && h > 30 && (
+                        <span className="mono-clock pointer-events-none absolute bottom-[3px] right-[5px] rounded-full bg-bg/70 px-[4px] text-[8.5px] leading-[13px] text-ink-3">
+                          +{behind}
+                        </span>
                       )}
 
                       <div
