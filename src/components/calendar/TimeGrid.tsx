@@ -73,6 +73,12 @@ export function TimeGrid({
   dragRef.current = drag
   const itemsRef = useRef(items)
   itemsRef.current = items
+  /**
+   * A pointerup always emits a click, and by then `drag` is already cleared —
+   * so remember the gesture in a ref and let the click handler consult it.
+   */
+  const draggedRef = useRef(false)
+  const dragOrigin = useRef<{ x: number; y: number } | null>(null)
 
   const [composer, setComposer] = useState<{ day: number; start: number; end: number } | null>(null)
   const [composeText, setComposeText] = useState('')
@@ -167,6 +173,11 @@ export function TimeGrid({
       // subtract that here or every drag of a stacked block jumps by its offset.
       const raw = gridStart + (e.clientY - rect.top - d.down) / pxPerMin
 
+      const origin = dragOrigin.current
+      if (origin && (Math.abs(e.clientX - origin.x) > 3 || Math.abs(e.clientY - origin.y) > 3)) {
+        draggedRef.current = true
+      }
+
       if (d.mode === 'create') {
         const cur = snap(raw, snapMin)
         setPreview({ day: dayIndex, start: Math.min(cur, d.anchorMin), end: Math.max(cur, d.anchorMin) })
@@ -256,6 +267,8 @@ export function TimeGrid({
       if (e.button !== 0) return
       e.stopPropagation()
       e.preventDefault()
+      draggedRef.current = false
+      dragOrigin.current = { x: e.clientX, y: e.clientY }
       if (mode === 'move') {
         const y = e.clientY - e.currentTarget.getBoundingClientRect().top
         setDrag({
@@ -318,6 +331,10 @@ export function TimeGrid({
             const dayItems = items.filter((i) => i.start >= dayStart && i.start < dayEnd && !i.allDay)
             const today = isToday(day)
             const dropHere = dropAt?.day === dayIndex ? dropAt : null
+            // The placeholder inherits the dragged block's cascade slot, so it
+            // lands exactly where the block will sit when the drag is released.
+            const dragItem = drag && drag.mode !== 'create' ? items.find((i) => i.id === drag.id) : null
+            const ghostGeo = (dragItem && cascade.get(dragItem.id)) || { down: 0, right: 0, z: 0, visible: 0 }
 
             return (
               <div
@@ -372,17 +389,25 @@ export function TimeGrid({
                   }}
                 />
 
-                {/* drag preview */}
+                {/* drag preview — drawn with the same geometry as the block it replaces */}
                 {drag && preview && preview.day === dayIndex && (
                   <div
-                    className="pointer-events-none absolute inset-x-[3px] z-30 rounded-[7px] border border-signal/70"
+                    className="pointer-events-none absolute z-30 overflow-hidden rounded-[7px] border border-signal/70 px-[7px]"
                     style={{
-                      top: (Math.min(preview.start, preview.end) - gridStart) * pxPerMin,
-                      height: Math.max(14, Math.abs(preview.end - preview.start) * pxPerMin),
+                      top: (Math.min(preview.start, preview.end) - gridStart) * pxPerMin + ghostGeo.down,
+                      height: Math.max(
+                        16,
+                        Math.abs(preview.end - preview.start) * pxPerMin - 3 - ghostGeo.down,
+                      ),
+                      left: ghostGeo.right,
+                      right: 3 + ghostGeo.right,
                       background: 'color-mix(in oklab, var(--signal) 13%, transparent)',
                     }}
                   >
-                    <div className="mono-clock tnum px-1.5 pt-[3px] text-[9.5px] font-semibold text-signal">
+                    <div className="truncate pt-[3px] text-[11px] font-semibold leading-[1.25] text-signal">
+                      {dragItem?.title ?? ''}
+                    </div>
+                    <div className="mono-clock tnum truncate text-[9.5px] leading-tight text-signal">
                       {fmtTime(atMinutes(day, Math.min(preview.start, preview.end)))}
                     </div>
                   </div>
@@ -440,7 +465,12 @@ export function TimeGrid({
                       }}
                       onClick={(e) => {
                         e.stopPropagation()
-                        if (dragging) return
+                        // Swallow the click a drag always emits; a real click
+                        // (no movement) still opens the editor.
+                        if (draggedRef.current) {
+                          draggedRef.current = false
+                          return
+                        }
                         onOpen(item)
                       }}
                       onContextMenu={(e) => {
