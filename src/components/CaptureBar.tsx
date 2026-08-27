@@ -32,11 +32,12 @@ export function CaptureBar() {
   const setCapture = useStore((s) => s.setCapture)
 
   useEffect(() => {
-    if (prefill) {
-      setText(prefill)
-      setCapture(false)
-      requestAnimationFrame(() => ref.current?.focus())
-    }
+    if (!prefill) return
+    setText(prefill)
+    // Consume the prefill without closing: the bar is already on screen in the
+    // views that can pre-fill it, and closing would throw the range away.
+    setCapture(true, '')
+    requestAnimationFrame(() => ref.current?.focus())
   }, [prefill, setCapture])
 
   const parsed = useMemo(() => (text.trim() ? parseInput(text) : null), [text])
