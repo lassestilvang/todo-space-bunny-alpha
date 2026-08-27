@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { CornerDownLeft, Plus, Repeat2, Sparkles } from 'lucide-react'
 import { useStore } from '@/lib/store'
-import { fmtDateKey } from '@/lib/date'
+import { fmtDateKey, fmtTime } from '@/lib/date'
 import { parseInput, splitEntries, type ParsedInput, type TokenKind } from '@/lib/nlp'
 import { cn } from '@/lib/selectors'
 import { Kbd } from './ui'
@@ -220,10 +220,7 @@ function ParsedChips({ parsed, raw }: { parsed: ParsedInput; raw: string }) {
   if (parsed.scheduledStart !== undefined)
     chips.push({
       label: 'block',
-      value: new Date(parsed.scheduledStart).toLocaleTimeString(undefined, {
-        hour: '2-digit',
-        minute: '2-digit',
-      }),
+      value: fmtTime(parsed.scheduledStart),
       color: 'var(--color-c-iris)',
     })
 
