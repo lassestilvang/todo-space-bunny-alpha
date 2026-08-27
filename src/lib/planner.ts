@@ -1,4 +1,4 @@
-import type { CalEvent, Habit, Settings, Task } from '@/types'
+import type { CalEvent, Habit, Settings, Task, TimeRange } from '@/types'
 import { addDays, atMinutes, DAY, fromKey, minOfDay, toKey } from './date'
 
 /**
@@ -24,10 +24,21 @@ export type PlanOptions = {
   float: boolean
   /** Re-place tasks that already have a block. */
   replan: boolean
+  /**
+   * Keep the plan true after a change to the calendar: blocks the planner owns
+   * are lifted out of the busy set and re-fitted, while blocks the user placed
+   * by hand stay exactly where they are.
+   */
+  refit: boolean
   maxPerDay: number
 }
 
-export const DEFAULT_PLAN_OPTIONS: PlanOptions = { float: true, replan: false, maxPerDay: 8 }
+export const DEFAULT_PLAN_OPTIONS: PlanOptions = {
+  float: true,
+  replan: false,
+  refit: false,
+  maxPerDay: 8,
+}
 
 export type PlannerInput = {
   tasks: Task[]
@@ -89,8 +100,14 @@ type DayModel = {
   committed: Interval[]
 }
 
-/** Meetings, habit anchors and anything already on the clock for this day. */
-function busyForDay(input: PlannerInput, day: Date): Interval[] {
+/**
+ * Meetings, habit anchors and anything already on the clock for this day.
+ *
+ * In `refit` mode the blocks the planner owns are not busy: they are the things
+ * being re-fitted, so counting them would leave the planner nowhere to move
+ * them to. Anything the user placed by hand still counts.
+ */
+function busyForDay(input: PlannerInput, day: Date, opts: PlanOptions = DEFAULT_PLAN_OPTIONS): Interval[] {
   const dayStart = atMinutes(day, 0)
   const dayEnd = dayStart + DAY
   const busy: Interval[] = []
@@ -111,6 +128,7 @@ function busyForDay(input: PlannerInput, day: Date): Interval[] {
   // when we are not doing a full replan.
   for (const t of input.tasks) {
     if (!t.scheduled || t.completed) continue
+    if (opts.refit && !t.planLocked) continue
     if (t.scheduled.end <= dayStart || t.scheduled.start >= dayEnd) continue
     busy.push({
       start: (t.scheduled.start - dayStart) / 60_000,
@@ -119,6 +137,24 @@ function busyForDay(input: PlannerInput, day: Date): Interval[] {
   }
 
   return mergeIntervals(busy)
+}
+
+/**
+ * True when a block the planner owns no longer fits where it sits: it now
+ * overlaps a meeting, a habit anchor, or a block the user placed by hand.
+ *
+ * This is the trigger for a refit. Blocks that still fit are left alone, so
+ * moving one meeting does not shuffle the whole day.
+ */
+export function blockConflicts(input: PlannerInput, task: Task): boolean {
+  const s = task.scheduled
+  if (!s) return false
+  const day = fromKey(toKey(s.start))
+  const dayStart = atMinutes(day, 0)
+  const fixed = busyForDay(input, day, { ...DEFAULT_PLAN_OPTIONS, refit: true })
+  const from = (s.start - dayStart) / 60_000
+  const to = (s.end - dayStart) / 60_000
+  return fixed.some((iv) => from < iv.end && to > iv.start)
 }
 
 function habitFallsOn(h: Habit, day: Date): boolean {
@@ -189,11 +225,20 @@ export function planRange(
       .map((t) => t.id),
   )
 
+  const horizonEnd = toKey(addDays(startDay, Math.max(0, days - 1)))
+  const inHorizon = (t: { scheduled: TimeRange | null }) =>
+    !t.scheduled ||
+    (toKey(t.scheduled.start) >= toKey(startDay) && toKey(t.scheduled.start) <= horizonEnd)
+
   const candidates = input.tasks
     .filter((t) => !t.completed && !blocked.has(t.id))
     .filter((t) => t.durationMin > 0)
     .filter((t) => opts.replan || !t.planLocked)
-    .filter((t) => opts.replan || !t.scheduled)
+    .filter((t) => opts.replan || opts.refit || !t.scheduled)
+    // A refit only re-fits work that already had a block inside the window.
+    // Placing *new* work is a decision the user makes from the planner sheet,
+    // not a side effect of moving a meeting.
+    .filter((t) => !opts.refit || (t.scheduled !== null && inHorizon(t)))
     .filter((t) => t.due || opts.float)
 
   const queue = [...candidates].sort((a, b) => {
@@ -207,7 +252,7 @@ export function planRange(
     const key = toKey(day)
     let m = models.get(key)
     if (!m) {
-      const busy = busyForDay(input, day)
+      const busy = busyForDay(input, day, opts)
       const base = isWorkDay(s, day) ? [{ start: s.workStart, end: s.workEnd }] : []
       m = { key, day, busy, committed: [], gaps: subtract(base, busy) }
       models.set(key, m)
