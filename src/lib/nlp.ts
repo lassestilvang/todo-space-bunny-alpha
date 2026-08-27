@@ -2,6 +2,7 @@ import type { DayPart, Priority, Recurrence } from '@/types'
 import {
   addDays,
   atMinutes,
+  fmtTime,
   fromKey,
   minutesUntilMidnight,
   MONTHS_SHORT,
@@ -547,9 +548,7 @@ export function describeParsed(p: ParsedInput): string[] {
   }
   if (p.durationMin) chips.push(`${p.durationMin}m`)
   if (p.scheduledStart !== undefined) {
-    chips.push(
-      new Date(p.scheduledStart).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }),
-    )
+    chips.push(fmtTime(p.scheduledStart))
   }
   return chips
 }
