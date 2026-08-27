@@ -116,7 +116,7 @@ export default function App() {
         case 'i':
           if (e.key === 'i' && s.ui.view !== 'inbox') return
           e.preventDefault()
-          s.setCapture(true, s.ui.capturePrefill, s.ui.captureSlot)
+          s.setCapture(true, s.ui.capturePrefill)
           focusCapture()
           return
         case '/':
