@@ -42,7 +42,6 @@ export function CalendarView({
   const setPanel = useStore((s) => s.setPanel)
   const panel = useStore((s) => s.ui.panel)
   const deleteEvent = useStore((s) => s.deleteEvent)
-  const setCapture = useStore((s) => s.setCapture)
   const toast = useStore((s) => s.toast)
   const menu = useContextMenu()
 
@@ -108,15 +107,9 @@ export function CalendarView({
   )
 
   const create = useCallback(
-    (day: Date, start: number, end: number, title?: string) => {
+    (day: Date, start: number, end: number, title: string) => {
       const s = atMinutes(day, start)
       const e = atMinutes(day, end)
-      if (!title) {
-        // Hand the drawn day along with the range: a bare "08:00–09:00" would
-        // otherwise be read as today, which is wrong on any other column.
-        setCapture(true, `${fmtTime(s)}–${fmtTime(e)} `, { day: toKey(day), start, end })
-        return
-      }
       const id = addTask({
         title,
         due: toKey(day),
@@ -128,7 +121,7 @@ export function CalendarView({
       setPanel({ kind: 'task', id })
       toast({ text: `Placed at ${fmtTime(s)}`, kind: 'ok' })
     },
-    [addTask, setCapture, setPanel, toast],
+    [addTask, setPanel, toast],
   )
 
   const dropItem = useCallback(
