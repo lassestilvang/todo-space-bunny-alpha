@@ -113,24 +113,19 @@ export function toItems(
 export type Positioned = CalendarItem & {
   /** Cluster id: every block that overlaps another shares one. */
   cluster: number
-  /** Cascade tier within the cluster, least important first. */
+  /** Slot in the cluster's cascade, earliest first. */
   depth: number
   /** How many blocks share this cluster. */
   clusterSize: number
 }
 
-/** More urgent first, then the longer commitment, then the earlier start. */
-function importance(a: CalendarItem, b: CalendarItem): number {
-  return a.priority - b.priority || b.end - a.end || a.start - b.start
-}
-
 /**
- * Overlapping blocks cascade instead of sharing the column side by side.
+ * Groups blocks that collide in time so the grid can cascade them.
  *
- * Lanes shrink every block to a fraction of the column, which turns three
- * simultaneous meetings into unreadable slivers. Here each block after the
- * first is inset from the right and painted on top of the one behind, so the
- * most important block keeps the full width and the rest peek out as slivers.
+ * Overlapping blocks share one cluster and get a slot in it, earliest first:
+ * urgent beats long when two start together. The grid then steps each slot down
+ * a little further, so every block keeps a readable strip instead of being
+ * squeezed into a narrow lane.
  */
 export function layoutItems(items: CalendarItem[]): Positioned[] {
   const sorted = [...items].sort((a, b) => a.start - b.start || b.end - a.end)
@@ -141,8 +136,9 @@ export function layoutItems(items: CalendarItem[]): Positioned[] {
 
   const flush = () => {
     if (!cluster.length) return
-    // Most important last, so the front card is the one that stays readable.
-    const ordered = [...cluster].sort((a, b) => -importance(a, b))
+    const ordered = [...cluster].sort(
+      (a, b) => a.start - b.start || a.priority - b.priority || b.end - a.end,
+    )
     ordered.forEach((item, depth) => {
       out.push({ ...item, cluster: clusterId, depth, clusterSize: ordered.length })
     })
