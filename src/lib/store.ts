@@ -46,6 +46,8 @@ type UIState = {
   paletteOpen: boolean
   captureOpen: boolean
   capturePrefill: string
+  /** Range the grid handed to the capture bar, in minutes from midnight. */
+  captureSlot: CaptureSlot | null
   activeProject: ID | 'all' | 'none'
   calendarFocus: number
   planOpen: boolean
@@ -62,6 +64,8 @@ type State = Entities & {
 }
 
 type NewTask = Partial<Task> & { title: string }
+
+export type CaptureSlot = { day: string; start: number; end: number }
 
 const ENTITIES: (keyof Entities)[] = ['tasks', 'events', 'habits', 'docs', 'projects', 'labels']
 
@@ -132,7 +136,11 @@ type Actions = {
   setAnchor: (key: string) => void
   setPanel: (p: PanelId) => void
   setPalette: (open: boolean) => void
-  setCapture: (open: boolean, prefill?: string) => void
+  /**
+   * `slot` is the range the calendar just drew out. The capture bar needs it
+   * because a bare "08:00–09:00" otherwise resolves against today.
+   */
+  setCapture: (open: boolean, prefill?: string, slot?: CaptureSlot | null) => void
   setPlanOpen: (open: boolean) => void
   setHelpOpen: (open: boolean) => void
   setAssistant: (open: boolean) => void
@@ -207,6 +215,7 @@ export const useStore = create<State & Actions>()(
         paletteOpen: false,
         captureOpen: true,
         capturePrefill: '',
+        captureSlot: null,
         activeProject: 'all',
         calendarFocus: 0,
         planOpen: false,
@@ -567,8 +576,10 @@ export const useStore = create<State & Actions>()(
       setAnchor: (key) => set((s) => ({ ui: { ...s.ui, anchor: key } })),
       setPanel: (p) => set((s) => ({ ui: { ...s.ui, panel: p } })),
       setPalette: (open) => set((s) => ({ ui: { ...s.ui, paletteOpen: open } })),
-      setCapture: (open, prefill = '') =>
-        set((s) => ({ ui: { ...s.ui, captureOpen: open, capturePrefill: prefill } })),
+      setCapture: (open, prefill = '', slot = null) =>
+        set((s) => ({
+          ui: { ...s.ui, captureOpen: open, capturePrefill: prefill, captureSlot: slot },
+        })),
       setPlanOpen: (open) => set((s) => ({ ui: { ...s.ui, planOpen: open } })),
       setHelpOpen: (open) => set((s) => ({ ui: { ...s.ui, helpOpen: open } })),
       setAssistant: (open) => set((s) => ({ ui: { ...s.ui, panel: open ? s.ui.panel : null } , settings: { ...s.settings, assistantOpen: open } })),
