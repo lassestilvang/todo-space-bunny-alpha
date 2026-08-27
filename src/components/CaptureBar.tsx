@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { CornerDownLeft, Plus, Repeat2, Sparkles } from 'lucide-react'
 import { useStore } from '@/lib/store'
-import { fmtDateKey, fmtTime } from '@/lib/date'
+import { atMinutes, fmtDateKey, fmtTime, fromKey } from '@/lib/date'
 import { parseInput, splitEntries, type ParsedInput, type TokenKind } from '@/lib/nlp'
 import { cn } from '@/lib/selectors'
 import { Kbd } from './ui'
@@ -29,6 +29,7 @@ export function CaptureBar() {
   const anchor = useStore((s) => s.ui.anchor)
   const toast = useStore((s) => s.toast)
   const prefill = useStore((s) => s.ui.capturePrefill)
+  const slot = useStore((s) => s.ui.captureSlot)
   const setCapture = useStore((s) => s.setCapture)
 
   useEffect(() => {
@@ -36,9 +37,9 @@ export function CaptureBar() {
     setText(prefill)
     // Consume the prefill without closing: the bar is already on screen in the
     // views that can pre-fill it, and closing would throw the range away.
-    setCapture(true, '')
+    setCapture(true, '', slot)
     requestAnimationFrame(() => ref.current?.focus())
-  }, [prefill, setCapture])
+  }, [prefill, slot, setCapture])
 
   const parsed = useMemo(() => (text.trim() ? parseInput(text) : null), [text])
 
@@ -87,18 +88,41 @@ export function CaptureBar() {
       const labelIds = p.labels
         .map((n) => labelByName.get(n.toLowerCase()))
         .filter((x): x is string => !!x)
-      const due = p.due ?? (dateMode === 'pinned' ? anchor : undefined)
+      // A range drawn on the grid belongs to the day it was drawn on. The
+      // parser can only resolve a bare "08:00" against today, so re-anchor it
+      // unless the user typed a date of their own.
+      const typedDate = p.tokens.some((t) => t.kind === 'date')
+      const fromSlot = slot && !typedDate ? slot : null
+      const day = fromSlot ? fromKey(fromSlot.day) : null
+      const clockOf = (ts: number) => {
+        const d = new Date(ts)
+        return d.getHours() * 60 + d.getMinutes()
+      }
+      const lo = Math.min(
+        p.scheduledStart ? clockOf(p.scheduledStart) : Infinity,
+        p.scheduledEnd ? clockOf(p.scheduledEnd) : Infinity,
+        fromSlot ? fromSlot.start : Infinity,
+      )
+      const hi = Math.max(
+        p.scheduledStart ? clockOf(p.scheduledStart) : -Infinity,
+        p.scheduledEnd ? clockOf(p.scheduledEnd) : -Infinity,
+        fromSlot ? fromSlot.end : -Infinity,
+      )
+      const useSlot = day !== null && Number.isFinite(lo) && Number.isFinite(hi) && hi > lo
+      const scheduledStart = useSlot ? atMinutes(day, lo) : p.scheduledStart
+      const scheduledEnd = useSlot ? atMinutes(day, hi) : p.scheduledEnd
+      const due =
+        p.due ??
+        (useSlot ? fromSlot!.day : dateMode === 'pinned' ? anchor : undefined)
       const id = addTask({
         title: p.title,
         projectId: project,
         labelIds,
         priority: p.priority,
         due,
-        dueHasTime: !!p.scheduledStart,
-        scheduled: p.scheduledStart
-          ? { start: p.scheduledStart, end: p.scheduledEnd! }
-          : null,
-        durationMin: p.durationMin,
+        dueHasTime: !!scheduledStart,
+        scheduled: scheduledStart ? { start: scheduledStart, end: scheduledEnd! } : null,
+        durationMin: useSlot ? hi - lo : p.durationMin,
         dayPart: p.dayPart,
         recurrence: p.recurrence,
       })
