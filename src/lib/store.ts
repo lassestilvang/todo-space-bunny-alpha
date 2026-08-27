@@ -17,13 +17,16 @@ import type {
 } from '@/types'
 import { uid } from './id'
 import {
+  MIN,
   addDays,
+  atMinutes,
   fromKey,
   minOfDay,
   nextOccurrence,
   startOfDay,
   toKey,
 } from './date'
+import { blockConflicts, planRange } from './planner'
 import { DEFAULT_SETTINGS, seedState } from './seed'
 
 type Entities = {
@@ -36,6 +39,8 @@ type Entities = {
 }
 
 type Snapshot = Entities
+
+export type RefitSummary = { moved: number; dropped: number; days: string[] }
 
 export type Toast = { id: string; text: string; kind: 'ok' | 'warn' | 'info'; action?: { label: string; run: () => void } }
 
@@ -125,6 +130,13 @@ type Actions = {
   /* plan */
   applyPlan: (blocks: { taskId: ID; start: number; end: number }[]) => void
   unscheduleDay: (key: string, onlyUnlocked?: boolean) => void
+  /**
+   * Keeps the plan true for a window of days: blocks the planner owns are
+   * re-fitted around whatever else is on the clock, and floating work with
+   * somewhere to go is placed. Blocks the user placed by hand never move.
+   * Idempotent — it writes nothing when the plan is already correct.
+   */
+  refitRange: (fromKey: string, days: number) => RefitSummary
 
   /* settings + ui */
   setSettings: (patch: Partial<Settings>) => void
@@ -543,6 +555,94 @@ export const useStore = create<State & Actions>()(
           }
           return { tasks, history: { past: [...s.history.past, snapshot(s)].slice(-HISTORY_LIMIT), future: [] } }
         }),
+      refitRange: (fromDayKey, days) => {
+        const s = get()
+        const horizonEnd = toKey(addDays(fromKey(fromDayKey), days - 1))
+        const input = {
+          tasks: Object.values(s.tasks),
+          events: Object.values(s.events),
+          habits: Object.values(s.habits),
+          settings: s.settings,
+        }
+
+        // Only blocks the planner owns, inside the window, and only the ones
+        // that have stopped fitting are in play. Everything else is left alone
+        // so that moving one meeting does not shuffle the whole day.
+        const movable = new Map<ID, Task>()
+        const stranded = new Set<ID>()
+        for (const [id, t] of Object.entries(s.tasks)) {
+          if (t.completed || t.planLocked || !t.scheduled) continue
+          const day = toKey(t.scheduled.start)
+          if (day < fromDayKey || day > horizonEnd) continue
+          movable.set(id, t)
+          if (blockConflicts(input, t)) stranded.add(id)
+        }
+
+        // Two blocks the planner owns can be left sitting on top of each other
+        // after a previous refit. They cannot both stay, so both are re-fitted
+        // and the planner spaces them out.
+        const staying = [...movable.values()].filter((t) => !stranded.has(t.id))
+        for (let i = 0; i < staying.length; i++) {
+          for (let j = i + 1; j < staying.length; j++) {
+            const a = staying[i].scheduled!
+            const b = staying[j].scheduled!
+            if (a.start < b.end && a.end > b.start) {
+              stranded.add(staying[i].id)
+              stranded.add(staying[j].id)
+            }
+          }
+        }
+        if (!stranded.size) return { moved: 0, dropped: 0, days: [] }
+
+        // Everything that is staying put becomes immovable for this pass, so
+        // the stranded blocks are re-fitted around it rather than through it.
+        const planInput = {
+          ...input,
+          tasks: input.tasks.map((t) =>
+            movable.has(t.id) && !stranded.has(t.id) ? { ...t, planLocked: true } : t,
+          ),
+        }
+        const report = planRange(planInput, fromDayKey, days, { refit: true, float: false })
+
+        // A task the planner had to split across chunks cannot be represented
+        // as one block, so those are left exactly where they are.
+        const chunks = new Map<ID, number>()
+        for (const p of report.placements) chunks.set(p.taskId, (chunks.get(p.taskId) ?? 0) + 1)
+
+        const tasks = { ...s.tasks }
+        const changed = new Set<string>()
+        let moved = 0
+        let dropped = 0
+
+        for (const id of stranded) {
+          const t = movable.get(id)
+          if (!t?.scheduled) continue
+          const p = report.placements.find((x) => x.taskId === id && chunks.get(id) === 1)
+          if (!p) {
+            // Nothing left for it: let it float rather than sit on a meeting.
+            tasks[id] = { ...t, scheduled: null }
+            changed.add(toKey(t.scheduled.start))
+            dropped++
+            continue
+          }
+          const start = atMinutes(fromKey(p.day), p.start)
+          if (start === t.scheduled.start) continue
+          tasks[id] = {
+            ...t,
+            scheduled: { start, end: start + (p.end - p.start) * MIN },
+            updatedAt: Date.now(),
+          }
+          changed.add(p.day)
+          moved++
+        }
+
+        if (moved === 0 && dropped === 0) return { moved: 0, dropped: 0, days: [] }
+        set({
+          tasks,
+          history: { past: [...s.history.past, snapshot(s)].slice(-HISTORY_LIMIT), future: [] },
+        })
+        return { moved, dropped, days: [...changed] }
+      },
       unscheduleDay: (key, onlyUnlocked = false) =>
         set((s) => {
           const tasks = { ...s.tasks }
