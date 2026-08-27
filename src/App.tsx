@@ -19,6 +19,7 @@ import { DocsView } from './components/views/DocsView'
 import { StatsView } from './components/views/StatsView'
 import { ListView } from './components/views/ListView'
 import { useStore, syncTheme } from './lib/store'
+import { useAutoReplan } from './lib/replan'
 import { toKey } from './lib/date'
 import type { ViewId } from './types'
 
@@ -35,6 +36,9 @@ const VIEW_BY_NUMBER: ViewId[] = [
 ]
 
 export default function App() {
+  // The calendar is the product, so it keeps its own promises: any change to
+  // the shape of a day re-fits the blocks the planner owns.
+  useAutoReplan()
   const view = useStore((s) => s.ui.view)
   const theme = useStore((s) => s.settings.theme)
   const planOpen = useStore((s) => s.ui.planOpen)
