@@ -78,6 +78,7 @@ export function CaptureBar() {
     const entries = splitEntries(text)
     if (!entries.length) return
     const created: string[] = []
+    let unnamed = 0
     for (const entry of entries) {
       const p = parseInput(entry)
       const projectId = p.projects.map((n) => projectByName.get(n.toLowerCase())).find(Boolean)
@@ -88,32 +89,31 @@ export function CaptureBar() {
       const labelIds = p.labels
         .map((n) => labelByName.get(n.toLowerCase()))
         .filter((x): x is string => !!x)
-      // A range drawn on the grid belongs to the day it was drawn on. The
-      // parser can only resolve a bare "08:00" against today, so re-anchor it
-      // unless the user typed a date of their own.
-      const typedDate = p.tokens.some((t) => t.kind === 'date')
-      const fromSlot = slot && !typedDate ? slot : null
-      const day = fromSlot ? fromKey(fromSlot.day) : null
+      // A range drawn on the grid belongs to the day it was drawn on, and the
+      // parser can only resolve a bare "08:00" against today. So: the drawn day
+      // and range stand unless the user typed a time or a date of their own.
       const clockOf = (ts: number) => {
         const d = new Date(ts)
         return d.getHours() * 60 + d.getMinutes()
       }
-      const lo = Math.min(
-        p.scheduledStart ? clockOf(p.scheduledStart) : Infinity,
-        p.scheduledEnd ? clockOf(p.scheduledEnd) : Infinity,
-        fromSlot ? fromSlot.start : Infinity,
-      )
-      const hi = Math.max(
-        p.scheduledStart ? clockOf(p.scheduledStart) : -Infinity,
-        p.scheduledEnd ? clockOf(p.scheduledEnd) : -Infinity,
-        fromSlot ? fromSlot.end : -Infinity,
-      )
-      const useSlot = day !== null && Number.isFinite(lo) && Number.isFinite(hi) && hi > lo
-      const scheduledStart = useSlot ? atMinutes(day, lo) : p.scheduledStart
-      const scheduledEnd = useSlot ? atMinutes(day, hi) : p.scheduledEnd
-      const due =
-        p.due ??
-        (useSlot ? fromSlot!.day : dateMode === 'pinned' ? anchor : undefined)
+      const typedDate = p.tokens.some((t) => t.kind === 'date')
+      const fromSlot = !typedDate ? slot : null
+      const typedStart = p.scheduledStart !== undefined ? clockOf(p.scheduledStart) : null
+      const typedEnd = p.scheduledEnd !== undefined ? clockOf(p.scheduledEnd) : null
+      const lo = typedStart !== null ? Math.min(typedStart, typedEnd ?? typedStart) : fromSlot?.start
+      const hi = typedEnd !== null ? Math.max(typedStart ?? typedEnd, typedEnd) : fromSlot?.end
+      const useSlot = fromSlot !== null && lo !== undefined && hi !== undefined && hi > lo
+      const day = useSlot ? fromKey(fromSlot.day) : null
+      const scheduledStart = day ? atMinutes(day, lo!) : p.scheduledStart
+      const scheduledEnd = day ? atMinutes(day, hi!) : p.scheduledEnd
+      const due = useSlot
+        ? fromSlot!.day
+        : (p.due ?? (dateMode === 'pinned' ? anchor : undefined))
+      // A drawn range with no name yet is still the prefill, not a task title.
+      if (fromSlot && /^\d{1,2}:\d{2}\s*[–—-]\s*\d{1,2}:\d{2}$/.test(p.title)) {
+        unnamed++
+        continue
+      }
       const id = addTask({
         title: p.title,
         projectId: project,
@@ -122,11 +122,16 @@ export function CaptureBar() {
         due,
         dueHasTime: !!scheduledStart,
         scheduled: scheduledStart ? { start: scheduledStart, end: scheduledEnd! } : null,
-        durationMin: useSlot ? hi - lo : p.durationMin,
+        durationMin: useSlot ? hi! - lo! : p.durationMin,
         dayPart: p.dayPart,
         recurrence: p.recurrence,
       })
       created.push(id)
+    }
+    if (unnamed > 0 && created.length === 0) {
+      toast({ text: 'Give the block a name first', kind: 'info' })
+      ref.current?.focus()
+      return
     }
     setText('')
     toast({
