@@ -111,46 +111,44 @@ export function toItems(
 }
 
 export type Positioned = CalendarItem & {
-  col: number
-  cols: number
-  laneWidth: number
-  /** True when the block collides with a higher-priority block. */
-  shadowed: boolean
+  /** Cluster id: every block that overlaps another shares one. */
+  cluster: number
+  /** Cascade tier within the cluster, least important first. */
+  depth: number
+  /** How many blocks share this cluster. */
+  clusterSize: number
 }
 
-/** Classic interval-graph column packing, so overlaps sit side by side. */
+/** More urgent first, then the longer commitment, then the earlier start. */
+function importance(a: CalendarItem, b: CalendarItem): number {
+  return a.priority - b.priority || b.end - a.end || a.start - b.start
+}
+
+/**
+ * Overlapping blocks cascade instead of sharing the column side by side.
+ *
+ * Lanes shrink every block to a fraction of the column, which turns three
+ * simultaneous meetings into unreadable slivers. Here each block after the
+ * first is inset from the right and painted on top of the one behind, so the
+ * most important block keeps the full width and the rest peek out as slivers.
+ */
 export function layoutItems(items: CalendarItem[]): Positioned[] {
   const sorted = [...items].sort((a, b) => a.start - b.start || b.end - a.end)
   const out: Positioned[] = []
   let cluster: CalendarItem[] = []
   let clusterEnd = -Infinity
+  let clusterId = 0
 
   const flush = () => {
     if (!cluster.length) return
-    const columns: CalendarItem[][] = []
-    for (const item of cluster) {
-      let placed = false
-      for (const col of columns) {
-        if (col.every((x) => x.end <= item.start)) {
-          col.push(item)
-          placed = true
-          break
-        }
-      }
-      if (!placed) columns.push([item])
-    }
-    for (const item of cluster) {
-      const idx = Math.max(0, columns.findIndex((col) => col.includes(item)))
-      out.push({
-        ...item,
-        col: idx,
-        cols: columns.length,
-        laneWidth: 1 / columns.length,
-        shadowed: idx > 0,
-      })
-    }
+    // Most important last, so the front card is the one that stays readable.
+    const ordered = [...cluster].sort((a, b) => -importance(a, b))
+    ordered.forEach((item, depth) => {
+      out.push({ ...item, cluster: clusterId, depth, clusterSize: ordered.length })
+    })
     cluster = []
     clusterEnd = -Infinity
+    clusterId++
   }
 
   for (const item of sorted) {
@@ -291,7 +289,9 @@ export function dayLoad(items: CalendarItem[], key: string): Map<number, number>
   return out
 }
 
-export const minutesLabel = (m: number) => {
+export const minutesLabel = (raw: number) => {
+  // Callers pass averages and fractional spans; never show a decimal.
+  const m = Math.max(0, Math.round(raw))
   const h = Math.floor(m / 60)
   const mm = m % 60
   if (!h) return `${mm}m`
