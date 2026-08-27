@@ -117,18 +117,16 @@ export const clamp = (v: number, lo: number, hi: number): number => Math.min(hi,
 /* ---------------------------------- formatting ---------------------------------- */
 
 /** 24h by default — this is a planning instrument, not a clock app. */
-export function fmtTime(t: number | Date, hour12 = false): string {
+/** 24-hour clock, always: "09:05", "14:30". */
+export function fmtTime(t: number | Date): string {
   const d = typeof t === 'number' ? new Date(t) : t
-  const h = d.getHours()
-  const m = d.getMinutes()
-  if (!hour12) return `${`${h}`.padStart(2, '0')}:${`${m}`.padStart(2, '0')}`
-  const ampm = h < 12 ? 'am' : 'pm'
-  const h12 = h % 12 === 0 ? 12 : h % 12
-  return m === 0 ? `${h12}${ampm}` : `${h12}:${`${m}`.padStart(2, '0')}${ampm}`
+  const h = `${d.getHours()}`.padStart(2, '0')
+  const m = `${d.getMinutes()}`.padStart(2, '0')
+  return `${h}:${m}`
 }
 
-export const fmtRange = (start: number, end: number, hour12 = false): string =>
-  `${fmtTime(start, hour12)}–${fmtTime(end, hour12)}`
+export const fmtRange = (start: number, end: number): string =>
+  `${fmtTime(start)}–${fmtTime(end)}`
 
 export function fmtDuration(minutes: number): string {
   if (minutes < 60) return `${minutes}m`
