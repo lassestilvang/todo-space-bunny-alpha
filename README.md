@@ -56,7 +56,7 @@ Most task apps separate *what you want to do* from *when you will do it*, then l
 
 ## Everything else
 
-- **Quick capture** parses `#project`, `@label`, `!1`–`!4`, `tomorrow`, `at 9:30`, `for 45m`, `every tue`, and shows a live reading of what it understood.
+- **Quick capture** parses `#project`, `@label`, `!1`–`!4`, `tomorrow`, `at 9:30`, `for 45m`, `every tue`, and shows a live reading of what it understood. Typed times may be 12- or 24-hour; everything Tempo renders is 24-hour. A range drawn on the grid is anchored to the day you drew it on, not to today.
 - **Views**: day, week, month, agenda (7/14/21 days), inbox/today/upcoming lists, Eisenhower matrix, project board, habits, notes, review.
 - **Habits** with daily/weekdays/weekly/custom cadence, anchors, streaks, and honest counts.
 - **Focus timer** with rounds and long breaks, opened from the sidebar pill as a modal. Timer state lives outside React, so closing the dialog never interrupts a run. Finished focus blocks are logged as store records; break sessions never pollute the numbers.
