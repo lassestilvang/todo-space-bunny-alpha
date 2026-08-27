@@ -112,7 +112,9 @@ export function CalendarView({
       const s = atMinutes(day, start)
       const e = atMinutes(day, end)
       if (!title) {
-        setCapture(true, `${fmtTime(s)}–${fmtTime(e)} `)
+        // Hand the drawn day along with the range: a bare "08:00–09:00" would
+        // otherwise be read as today, which is wrong on any other column.
+        setCapture(true, `${fmtTime(s)}–${fmtTime(e)} `, { day: toKey(day), start, end })
         return
       }
       const id = addTask({
