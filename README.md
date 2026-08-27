@@ -48,7 +48,8 @@ Most task apps separate *what you want to do* from *when you will do it*, then l
 | Drag a block's top or bottom edge | Resizes, snapped to your step, never across days |
 | Drag a floating chip or rail row onto the grid | Schedules it at the drop time, with a live ghost showing the exact range |
 | Drag an all-day event onto the grid | Turns it into a timed block |
-| Click an empty slot | Opens a title field there; drag instead to pick the length |
+| Click an empty slot | Opens a title field there, defaulting to 30 minutes |
+| Drag out a range | Opens the same field on the range you drew, with its length |
 | Arrow keys on a focused block | Nudge by one step; `Shift` + arrows change length |
 | Right-click a block | Move off the calendar, start a focus block, duplicate, delete |
 
@@ -56,7 +57,7 @@ Most task apps separate *what you want to do* from *when you will do it*, then l
 
 ## Everything else
 
-- **Quick capture** parses `#project`, `@label`, `!1`–`!4`, `tomorrow`, `at 9:30`, `for 45m`, `every tue`, and shows a live reading of what it understood. Typed times may be 12- or 24-hour; everything Tempo renders is 24-hour. A range drawn on the grid is anchored to the day you drew it on, not to today.
+- **Quick capture** parses `#project`, `@label`, `!1`–`!4`, `tomorrow`, `at 9:30`, `for 45m`, `every tue`, and shows a live reading of what it understood. Typed times may be 12- or 24-hour; everything Tempo renders is 24-hour.
 - **Views**: day, week, month, agenda (7/14/21 days), inbox/today/upcoming lists, Eisenhower matrix, project board, habits, notes, review.
 - **Habits** with daily/weekdays/weekly/custom cadence, anchors, streaks, and honest counts.
 - **Focus timer** with rounds and long breaks, opened from the sidebar pill as a modal. Timer state lives outside React, so closing the dialog never interrupts a run. Finished focus blocks are logged as store records; break sessions never pollute the numbers.
