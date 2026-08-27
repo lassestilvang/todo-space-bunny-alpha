@@ -391,6 +391,12 @@
       linear-gradient(180deg, color-mix(in oklab, var(--blk) 34%, transparent), color-mix(in oklab, var(--blk) 18%, transparent)),
       color-mix(in oklab, var(--blk) 10%, var(--surface));
   }
+  /* Cards stacked behind another block recede so the front one reads first. */
+  .block-surface.block-stacked {
+    background:
+      linear-gradient(180deg, color-mix(in oklab, var(--blk) 17%, transparent), color-mix(in oklab, var(--blk) 7%, transparent)),
+      color-mix(in oklab, var(--blk) 5%, var(--surface));
+  }
 
   .ghost-drag {
     opacity: 0.9;
