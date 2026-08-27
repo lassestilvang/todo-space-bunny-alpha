@@ -860,6 +860,21 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
             format={(v) => `${v} min`}
             step={15}
           />
+          <label className="flex cursor-pointer items-start justify-between gap-3 py-1.5">
+            <span className="min-w-0">
+              <span className="block text-[12.5px] text-ink-2">Keep the plan true</span>
+              <span className="mt-0.5 block text-[10.5px] leading-snug text-ink-4">
+                When the day changes, move planned blocks out of the way. Blocks you place
+                yourself never move.
+              </span>
+            </span>
+            <input
+              type="checkbox"
+              checked={settings.autoPlan}
+              onChange={(e) => set({ autoPlan: e.target.checked })}
+              className="mt-0.5 size-[15px] shrink-0 accent-[var(--signal)]"
+            />
+          </label>
         </Group>
 
         <Group title="Assistant">
