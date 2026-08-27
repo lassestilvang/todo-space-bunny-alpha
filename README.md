@@ -62,6 +62,7 @@ Most task apps separate *what you want to do* from *when you will do it*, then l
 - **Focus timer** with rounds and long breaks, opened from the sidebar pill as a modal. Timer state lives outside React, so closing the dialog never interrupts a run. Finished focus blocks are logged as store records; break sessions never pollute the numbers.
 - **Assistant** works offline against a deterministic intent engine (add, schedule, unschedule, complete, delete, priority, plan). It opens as a modal. Supply an Anthropic or OpenAI key in Settings if you want model-written replies.
 - **Review** reports where time actually went, counting completed sessions at their planned length and abandoned ones at zero.
+- **Overlapping blocks cascade** instead of splitting the column into lanes: the most important one keeps the full width and the rest stack behind it with their own z-layer, so three meetings at 09:30 stay readable. Clicking a sliver promotes that block to the front.
 - **Undo/redo** across 60 steps, including planner applications and drops.
 - Markdown rendering builds React elements only — no HTML strings, links limited to `http`/`https`/`mailto`.
 
