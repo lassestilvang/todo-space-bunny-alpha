@@ -40,6 +40,20 @@ Most task apps separate *what you want to do* from *when you will do it*, then l
 - The **planner** fills gaps: it respects working hours, existing meetings, buffer time, priority, estimated duration, energy type (`deep` / `shallow` / `admin`), preferred daypart, and habit anchors. It fills real openings rather than stacking things on top of each other.
 - Anything you place by hand is marked `planLocked` and the planner will not move it again.
 
+## Keeping the plan true
+
+The calendar keeps its own promises. When the shape of a day changes — a meeting moves, a block is completed, working hours are edited — the blocks the planner owns are re-fitted around it, and one undo step covers the lot.
+
+The rules it holds to:
+
+- **Only blocks that stopped fitting move.** A block that still has a valid slot is left exactly where it is, so moving one meeting does not shuffle the rest of the day.
+- **Anything you placed by hand never moves.** Dragged, resized or dropped blocks are `planLocked` and are treated as immovable walls. If you put a block under a meeting, it stays there — that was your call.
+- **It never schedules new work.** A refit re-fits what is already on the clock and nothing else. Filling a day with new work is a decision you make from the planner sheet, not a side effect of moving a meeting.
+- **It works in a window.** A change on Thursday refits the visible seven days; work scheduled beyond that is untouched.
+- **If a block cannot fit anywhere in the window, it comes off the clock** and says so, rather than silently sitting on top of a meeting.
+
+Settings → **Keep the plan true** turns the whole mechanism off, leaving the planner sheet as the only way to place work.
+
 ## Scheduling by hand
 
 | Gesture | Result |
@@ -62,6 +76,7 @@ Most task apps separate *what you want to do* from *when you will do it*, then l
 - **Habits** with daily/weekdays/weekly/custom cadence, anchors, streaks, and honest counts.
 - **Focus timer** with rounds and long breaks, opened from the sidebar pill as a modal. Timer state lives outside React, so closing the dialog never interrupts a run. Finished focus blocks are logged as store records; break sessions never pollute the numbers.
 - **Assistant** works offline against a deterministic intent engine (add, schedule, unschedule, complete, delete, priority, plan). It opens as a modal. Supply an Anthropic or OpenAI key in Settings if you want model-written replies.
+- **Planner** fills real openings — working hours, meetings, buffers, priority, estimated duration, `deep`/`shallow`/`admin` energy, preferred daypart and habit anchors — never stacking work on top of anything.
 - **Review** reports where time actually went, counting completed sessions at their planned length and abandoned ones at zero.
 - **Overlapping blocks cascade** instead of splitting the column into narrow lanes. Each colliding block is a full-width band that steps down and right a little further and paints over the one above, so three meetings at 09:30 all stay readable with their titles intact. The step is capped by the shortest block, and thin bands tighten their padding and drop the time line rather than clipping text.
 - **Undo/redo** across 60 steps, including planner applications and drops.
@@ -121,6 +136,8 @@ React 19, TypeScript 6 (strict, `noUnusedLocals`), Vite 8, Tailwind CSS v4 via `
 ## Known limitations
 
 - Chromium throttles `dragover` to roughly 350 ms, so a drop preview can lag the cursor by one snap step. The landing position is recomputed from the real `drop` event, so what you release onto is always correct.
-- Recurring tasks generate the next occurrence when you complete one; editing or moving a recurring task edits that single occurrence.
+- Recurring tasks generate the next occurrence when you complete one; editing or moving a recurring task edits that single occurrence. Recurring *events* are not supported at all — `recurrence` is on `Task` only, so a standup cannot repeat.
 - There are no unit tests yet. `scripts/verify.mjs` covers rendering and console cleanliness across every view.
+- A `planLocked` block can end up underneath a meeting, because you are allowed to put it there and Tempo will not argue.
+- Subtasks exist in the model but the planner ignores them, so a three-subtask task is planned as one block.
 - The notes markdown renderer covers headings, lists, checklists, quotes, code, links, and emphasis — no tables or fenced code blocks.
