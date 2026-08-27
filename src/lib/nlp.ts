@@ -134,7 +134,9 @@ function addRule(re: RegExp, fn: Handler) {
     re.lastIndex = c.i
     const m = re.exec(c.src)
     if (!m || m.index !== c.i) return null
-    return fn(c, m)
+    // A handler returns a truthy value to accept the match; the scanner then
+    // consumes the whole match, not one character.
+    return fn(c, m) ? m[0].length : null
   })
 }
 
@@ -490,6 +492,7 @@ export function parseInput(input: string, now = new Date()): ParsedInput {
       const dayOffset = c.pendingTime <= nowMin ? 1 : 0
       out.scheduledStart = atMinutes(addDays(now, dayOffset), c.pendingTime)
       out.scheduledEnd = out.scheduledStart + c.rangeMinutes * 60_000
+      out.durationMin = c.rangeMinutes
       out.due = toKey(out.scheduledStart)
     } else if (c.pendingTime > nowMin) {
       out.due = toKey(now)
