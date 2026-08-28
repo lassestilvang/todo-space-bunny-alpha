@@ -134,12 +134,12 @@ Not features — things that are wrong or missing and should not be forgotten.
 - Four native time inputs follow browser locale, not 24-hour (item 4).
 - No unit tests. `scripts/verify.mjs` covers rendering and console cleanliness only
   (fifteen surfaces now, including Focus).
+  The planner and the NLP parser are pure functions and are the first things worth
+  testing properly.
 - Saved filters cover project, label, priority, due window, on-the-clock and energy.
   The brief also mentioned driving "the capture bar's default view"; that clause is not
   implemented, because nothing in the capture flow wanted a saved filter and inventing one
   would have meant guessing.
-  The planner and the NLP parser are pure functions and are the first things worth
-  testing properly.
 - A `planLocked` block can sit underneath a meeting, because the user is allowed to
   put it there. This is deliberate, and deadline risk surfacing now makes the
   schedule itself honest, but the overlap is still only visible on the block.
