@@ -72,6 +72,13 @@ const shots = [
     },
   },
   {
+    name: '09b-focus',
+    act: async (page) => {
+      await page.click('nav button:has-text("Focus")').catch(() => {})
+      await page.waitForTimeout(600)
+    },
+  },
+  {
     name: '10-docs',
     act: async (page) => {
       await page.click('nav button:has-text("Notes")').catch(() => {})
