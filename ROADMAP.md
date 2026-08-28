@@ -14,6 +14,17 @@ more truthful, more drivable, or more honest about time is out of scope.
 
 ## Now
 
+**Focus mode** — `done`. `F` steps the whole app aside: one ring, the task you
+promised yourself, the phase, and what comes next. `Space` runs the session, `Esc`
+or a click away leaves, and the session keeps running while you are gone, so
+nothing about the timer depends on the surface being open.
+
+**Deadline risk surfacing** — `done`. A task that finishes after the day it was
+due, or is due now with no time on the clock, is flagged everywhere: an amber
+triangle on the block itself, a marker on the list row, a sentence in the day rail,
+and a warn-coloured count on the Today row. The rule lives in `src/lib/risk.ts` and
+is derived on the spot, so the four surfaces cannot disagree.
+
 **Continuous re-plan** — `done`. The calendar keeps its own promises: when the
 shape of a day changes, planner-owned blocks are re-fitted, hand-placed blocks
 never move, and nothing new gets scheduled. See README → *Keeping the plan true*.
@@ -22,34 +33,7 @@ never move, and nothing new gets scheduled. See README → *Keeping the plan tru
 
 ## Next up
 
-### 1. Deadline risk surfacing — S
-
-The refit moves blocks and quietly pushes work that no longer fits. Nothing tells
-you that a task now has no time before its due date, which is the one thing a
-planner must never hide.
-
-- A day-summary line in the rail: "2 tasks due this week have no time yet".
-- Blocks that the refit pushed to a later day than their due date get flagged in
-  place, not only in a toast that has already faded.
-- Risk is derived, never stored: compare each due task's scheduled end with its due date.
-
-**Done when** a task due before its only block shows as at-risk in the day rail, in
-the week grid, and in a list view, and the same rule drives a count on the Today row.
-
-### 2. Focus mode — S
-
-From AkiFlow. The timer works but lives in a sidebar pill; focus mode is what makes
-a timer something you actually use.
-
-- Full-bleed surface: the ring, the task title, the phase, the next phase.
-- Everything else hidden — no sidebar, no rail, no grid. `Esc` or a click returns.
-- Keeps running while hidden; the document title still counts down.
-- The linked task is opened read-only, with "done" as the only action offered.
-
-**Done when** `F` toggles it from anywhere, a running session survives entering and
-leaving it, and a 25-minute session can be completed without touching the mouse.
-
-### 3. Focus goal and history — S
+### 1. Focus goal and history — S
 
 Sessions are already logged honestly (completed count at planned length, abandoned
 at zero). Nothing consumes that yet.
@@ -61,7 +45,7 @@ at zero). Nothing consumes that yet.
 **Done when** the Focus view shows goal, streak, and a week of bars, and the numbers
 match the Review view exactly.
 
-### 4. Phase-change sound — S
+### 2. Phase-change sound — S
 
 The ticker is silent, so a finished phase is only noticed by looking. A single
 short tone, off by default, with a volume that respects the OS.
@@ -73,7 +57,7 @@ never while the window is unfocused and muted.
 
 ## Worth doing
 
-### 5. Auto-prioritise "the one thing" — M
+### 3. Auto-prioritise "the one thing" — M
 
 From Motion. The data exists; the judgement does not.
 
@@ -85,7 +69,7 @@ From Motion. The data exists; the judgement does not.
 **Done when** the top bar names what to do next and the answer visibly changes when
 the time of day, the priority, or a meeting moves.
 
-### 6. Saved filters — M
+### 4. Saved filters — M
 
 From Todoist, and the largest gap on the task side. Today, Upcoming and Inbox are
 hard-coded; there is no way to ask a question the app cannot answer.
@@ -97,7 +81,7 @@ hard-coded; there is no way to ask a question the app cannot answer.
 **Done when** a saved filter is a first-class sidebar entry, shareable by export,
 and that the same filter logic can drive a list view and the capture bar's default view.
 
-### 7. The drawn block takes a project — S
+### 5. The drawn block takes a project — S
 
 A consequence of routing grid creation through the inline field: it commits the raw
 title, so a block drawn on the calendar cannot pick up `#project`, `@label` or `!1`
@@ -106,7 +90,7 @@ the way typed capture does. The composer should run its text through the same pa
 **Done when** drawing a block and typing `plan the week #Studio !1` yields the project,
 label and priority, with the same live chips the capture bar shows.
 
-### 8. Recurring events — M
+### 6. Recurring events — M
 
 `recurrence` exists on `Task` only, so a standup cannot repeat. This is a
 correctness gap rather than a missing feature.
@@ -117,7 +101,7 @@ correctness gap rather than a missing feature.
 **Done when** a weekly meeting repeats, a single instance can be moved or cancelled,
 and the series is left alone.
 
-### 9. Subtasks count when planning — M
+### 7. Subtasks count when planning — M
 
 A task with three unfinished subtasks is planned as one block of its own duration.
 The planner should either lengthen the block or schedule the subtasks.
@@ -125,7 +109,7 @@ The planner should either lengthen the block or schedule the subtasks.
 **Done when** an incomplete subtask list changes the planned length, and completing
 subtasks is reflected in the block that represents the task.
 
-### 10. A 24-hour time field — S
+### 8. A 24-hour time field — S
 
 Four native `<input type="time">` widgets (event start and end, habit anchor, and
 working hours) render in the browser's locale format. Their values are 24-hour, but
@@ -139,7 +123,7 @@ the widget is not, which is inconsistent with the rest of the app.
 
 ## Bigger, later
 
-### 11. "Free up an hour" — L
+### 9. "Free up an hour" — L
 
 From Ellie. The assistant is seven intents deep: add, schedule, unschedule,
 complete, delete, priority, plan. It can execute but cannot negotiate.
@@ -153,7 +137,7 @@ complete, delete, priority, plan. It can execute but cannot negotiate.
 **Done when** a vague request returns options with previews, and applying one is a
 single undoable step that shows exactly what moved.
 
-### 12. Folders — M
+### 10. Folders — M
 
 From Todoist sections and TickTick lists. Projects are flat.
 
@@ -170,13 +154,14 @@ can span a folder.
 
 Not features — things that are wrong or missing and should not be forgotten.
 
-- The inline grid field does not parse `#project` / `@label` / `!1` (see item 7).
-- Four native time inputs follow browser locale, not 24-hour (item 10).
+- The inline grid field does not parse `#project` / `@label` / `!1` (see item 5).
+- Four native time inputs follow browser locale, not 24-hour (item 8).
 - No unit tests. `scripts/verify.mjs` covers rendering and console cleanliness only.
   The planner and the NLP parser are pure functions and are the first things worth
   testing properly.
 - A `planLocked` block can sit underneath a meeting, because the user is allowed to
-  put it there. This is deliberate, but item 1 should make it visible.
+  put it there. This is deliberate, and deadline risk surfacing now makes the
+  schedule itself honest, but the overlap is still only visible on the block.
 - The seed workspace ships with three overlaps on the first day: the tutorial block
   sits under the Standup, a planner block sits against the 1:1 with Ana, and Lunch
   with Sam runs into Design review. The refit repairs the second kind on the first
