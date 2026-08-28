@@ -182,9 +182,28 @@ export type ChatMessage = {
   error?: boolean
 }
 
+/** One condition a saved filter asks of a task. */
+export type FilterClause =
+  | { kind: 'project'; id: ID }
+  | { kind: 'label'; id: ID }
+  | { kind: 'priority'; priority: Priority }
+  | { kind: 'due'; window: 'overdue' | 'today' | 'tomorrow' | 'week' | 'none' }
+  | { kind: 'scheduled'; value: 'yes' | 'no' }
+  | { kind: 'energy'; energy: Energy }
+
+/** A named question about your tasks, kept so you can ask it again. */
+export type TaskFilter = {
+  id: ID
+  name: string
+  clauses: FilterClause[]
+  order: number
+}
+
 export type ViewId =
   | 'day'
   | 'focus'
+  /** A saved filter answering on the list view. */
+  | 'filter'
   | 'week'
   | 'month'
   | 'agenda'
