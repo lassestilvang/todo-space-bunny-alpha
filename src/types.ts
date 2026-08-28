@@ -157,6 +157,8 @@ export type Settings = {
   autoPlan: boolean
   /** Minutes of focus a day counts as meeting the goal. */
   focusGoalMin: number
+  /** Chime when a focus block or a break ends. Off by default. */
+  soundOn: boolean
   /** Minutes of buffer the planner leaves after a meeting. */
   bufferMin: number
   /** Longest continuous focus block the planner will create, in minutes. */
