@@ -9,7 +9,7 @@ import { CommandPalette } from './components/CommandPalette'
 import { PlanSheet } from './components/PlanSheet'
 import { Shortcuts } from './components/Shortcuts'
 import { Toasts } from './components/Toasts'
-import { PomodoroDock } from './components/Pomodoro'
+import { FocusSurface, PomodoroDock } from './components/Pomodoro'
 import { MonthView } from './components/views/MonthView'
 import { AgendaView } from './components/views/AgendaView'
 import { MatrixView } from './components/views/MatrixView'
@@ -19,6 +19,7 @@ import { DocsView } from './components/views/DocsView'
 import { StatsView } from './components/views/StatsView'
 import { ListView } from './components/views/ListView'
 import { useStore, syncTheme } from './lib/store'
+import { cn } from './lib/selectors'
 import { useAutoReplan } from './lib/replan'
 import { toKey } from './lib/date'
 import type { ViewId } from './types'
@@ -44,6 +45,8 @@ export default function App() {
   const planOpen = useStore((s) => s.ui.planOpen)
   const captureOpen = useStore((s) => s.ui.captureOpen)
   const [load, setLoad] = useState({ planned: 0, capacity: 0, items: 0 })
+  /** Focus mode: the app steps aside, the session does not. */
+  const [focus, setFocus] = useState(false)
 
   /* theme */
   useEffect(() => syncTheme(theme), [theme])
@@ -89,7 +92,8 @@ export default function App() {
       }
 
       if (e.key === 'Escape') {
-        if (s.ui.paletteOpen) s.setPalette(false)
+        if (focus) setFocus(false)
+        else if (s.ui.paletteOpen) s.setPalette(false)
         else if (s.ui.planOpen) s.setPlanOpen(false)
         else if (s.ui.helpOpen) s.setHelpOpen(false)
         else if (s.ui.panel) s.setPanel(null)
@@ -138,9 +142,13 @@ export default function App() {
           return
         case 'f':
           e.preventDefault()
-          document
-            .querySelector<HTMLButtonElement>('[aria-label*="focus timer"], [aria-label*="Open timer"]')
-            ?.click()
+          // Opening focus mode opens the timer behind it; the modal stays closed
+          // while the surface is up, so nothing is on screen but the session.
+          setFocus((on) => {
+            if (!on) document.querySelector<HTMLButtonElement>('[aria-label*="Open timer"]')?.click()
+            return !on
+          })
+          return
           return
       }
 
@@ -187,13 +195,15 @@ export default function App() {
       window.removeEventListener('keydown', onKey)
       window.clearTimeout(gTimer)
     }
-  }, [])
+  }, [focus])
 
   const showCapture = captureOpen && (view === 'day' || view === 'week' || view === 'agenda' || view === 'inbox' || view === 'today' || view === 'upcoming')
 
   return (
     <div className="grain vignette flex h-full w-full flex-col overflow-hidden bg-bg text-ink">
-      <div className="flex min-h-0 flex-1">
+      {focus && <FocusSurface onLeave={() => setFocus(false)} />}
+      {/* `hidden` rather than unmounted: the grid and the timer keep their state. */}
+      <div className={cn('flex min-h-0 flex-1', focus && 'hidden')}>
         <Sidebar />
 
         <main className="flex min-w-0 flex-1 flex-col">
@@ -225,7 +235,7 @@ export default function App() {
       <PlanSheet open={planOpen} onClose={() => useStore.getState().setPlanOpen(false)} />
       <Assistant />
       <DetailPanel />
-      <PomodoroDock />
+      <PomodoroDock suppressModal={focus} />
       <Shortcuts />
       <Toasts />
     </div>
