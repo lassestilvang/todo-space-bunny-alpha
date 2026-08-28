@@ -10,10 +10,10 @@ import {
 } from 'react'
 import { AlertTriangle, Lock, Sparkles } from 'lucide-react'
 import type { CalendarItem } from '@/types'
-import { MIN, atMinutes, clamp, fmtRelativeDay, fmtTime, isToday, snap } from '@/lib/date'
+import { MIN, atMinutes, clamp, fmtTime, isToday, snap } from '@/lib/date'
 import { cn, type Positioned } from '@/lib/selectors'
 import { activeItemPayload, hasItemPayload, readItemPayload, type DropPayload } from '@/lib/drag'
-import { riskForItem } from '@/lib/risk'
+import { riskForItem, riskTitle } from '@/lib/risk'
 
 export const GUTTER = 56
 export const MIN_BLOCK = 10
@@ -492,7 +492,7 @@ export function TimeGrid({
                     >
                       {atRisk && h > 22 && (
                         <span
-                          title={`Finishes ${fmtRelativeDay((item.ref as { due?: string }).due)}`}
+                          title={riskTitle((item.ref as { due?: string }).due)}
                           className="pointer-events-none absolute bottom-[4px] right-[5px] z-10 text-warn"
                         >
                           <AlertTriangle size={11} />
