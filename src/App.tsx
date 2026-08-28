@@ -47,11 +47,12 @@ export default function App() {
   const planOpen = useStore((s) => s.ui.planOpen)
   const captureOpen = useStore((s) => s.ui.captureOpen)
   const filters = useStore((s) => s.filters)
-  // Saved filters take the numbers after the fixed views, so 1-9 always lands
-  // somewhere and the last slots follow your own questions.
+  // 1-8 keep the meaning they have always had. Saved filters take the slots
+  // after them, so your own questions are one keystroke away; with no filters
+  // saved, `9` still lands on Habits as it always did.
   const numbers = useMemo<string[]>(
     () => [
-      ...VIEW_BY_NUMBER,
+      ...VIEW_BY_NUMBER.slice(0, 8),
       ...Object.values(filters)
         .sort((a, b) => a.order - b.order)
         .map((f) => f.id),
@@ -233,7 +234,7 @@ export default function App() {
             {view === 'week' && <CalendarView mode="week" onPlan={openPlan} onLoad={setLoad} />}
             {view === 'month' && <MonthView />}
             {view === 'agenda' && <AgendaView />}
-            {(view === 'inbox' || view === 'today' || view === 'upcoming') && (
+            {(view === 'inbox' || view === 'today' || view === 'upcoming' || view === 'filter') && (
               <ListView view={view} onPlan={openPlan} />
             )}
             {view === 'matrix' && <MatrixView />}
