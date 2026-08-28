@@ -74,7 +74,7 @@ Settings → **Keep the plan true** turns the whole mechanism off, leaving the p
 - **Quick capture** parses `#project`, `@label`, `!1`–`!4`, `tomorrow`, `at 9:30`, `for 45m`, `every tue`, and shows a live reading of what it understood. Typed times may be 12- or 24-hour; everything Tempo renders is 24-hour.
 - **Views**: day, week, month, agenda (7/14/21 days), inbox/today/upcoming lists, Eisenhower matrix, project board, habits, notes, review.
 - **Habits** with daily/weekdays/weekly/custom cadence, anchors, streaks, and honest counts.
-- **Focus timer** with rounds and long breaks, opened from the sidebar pill as a modal. Timer state lives outside React, so closing the dialog never interrupts a run. Finished focus blocks are logged as store records; break sessions never pollute the numbers.
+- **Focus timer** with rounds and long breaks, opened from the sidebar pill as a modal, or full-screen with `F`. Focus mode shows one ring, the task, and what comes next; `Space` runs the session and `Esc` leaves with the session still running. Timer state lives outside React, so no surface can interrupt a run. Finished focus blocks are logged as store records; break sessions never pollute the numbers.
 - **Assistant** works offline against a deterministic intent engine (add, schedule, unschedule, complete, delete, priority, plan). It opens as a modal. Supply an Anthropic or OpenAI key in Settings if you want model-written replies.
 - **Planner** fills real openings — working hours, meetings, buffers, priority, estimated duration, `deep`/`shallow`/`admin` energy, preferred daypart and habit anchors — never stacking work on top of anything.
 - **Review** reports where time actually went, counting completed sessions at their planned length and abandoned ones at zero.
@@ -95,7 +95,8 @@ Press `?` for this list in the app.
 | `1`–`9` | Jump to a view by number |
 | `G` then `I` / `T` / `U` / `D` / `W` | Inbox, today, upcoming, day, week |
 | `Cmd K` | Command palette |
-| `F` | Open the focus timer |
+| `F` | Enter or leave focus mode |
+| `Space` | Start or pause the timer, in focus mode |
 | `/` | Search |
 | `Cmd Z` / `Shift Cmd Z` | Undo / redo |
 | `S` | Toggle light and dark |
