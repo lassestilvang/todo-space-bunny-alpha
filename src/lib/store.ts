@@ -806,6 +806,7 @@ export const useStore = create<State & Actions>()(
         docs: s.docs,
         projects: s.projects,
         labels: s.labels,
+        filters: s.filters,
         sessions: s.sessions,
         chat: s.chat,
         settings: s.settings,
