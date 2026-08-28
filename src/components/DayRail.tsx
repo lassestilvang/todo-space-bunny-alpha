@@ -10,14 +10,16 @@ import {
   Sunrise,
   Sunset,
   Wand2,
+  AlertTriangle,
 } from 'lucide-react'
 import { useStore } from '@/lib/store'
 import type { Task } from '@/types'
-import { atMinutes, fmtDuration, fmtRelativeDay, fmtTime, toKey } from '@/lib/date'
+import { addDays, atMinutes, fmtDuration, fmtRelativeDay, fmtTime, fromKey, toKey } from '@/lib/date'
 import { cn, cssColor, isOverdue, sortTasks } from '@/lib/selectors'
 import { clearItemPayload, setItemPayload } from '@/lib/drag'
 import { Btn, Checkbox, Empty, Ring } from './ui'
 import { planRange, toBlocks } from '@/lib/planner'
+import { riskReport, riskSentence } from '@/lib/risk'
 
 const ENERGY_ICON = { deep: Sparkles, shallow: Sun, admin: Moon } as const
 const ENERGY_HINT = {
@@ -74,6 +76,12 @@ export function DayRail({
   const workdayMin = Math.max(1, settings.workEnd - settings.workStart)
   const booked = Math.min(1, totalMin / workdayMin)
 
+  // The week the app keeps true, so the rail can say what is going wrong in it.
+  const weekRisk = useMemo(
+    () => riskReport(Object.values(tasks), day, toKey(addDays(fromKey(day), 6)), Date.now()),
+    [tasks, day],
+  )
+
   const placeOne = (task: Task) => {
     const report = planRange(
       {
@@ -121,7 +129,21 @@ export function DayRail({
             </div>
           </div>
         </div>
-        <Btn variant="primary" size="sm" onClick={onPlan} className="mt-3 w-full justify-center">
+        {weekRisk.total > 0 && (
+          <button
+            onClick={() => setView('week')}
+            title={weekRisk.late
+              .concat(weekRisk.unplaced)
+              .map((t) => `${t.title} — due ${fmtRelativeDay(t.due)}`)
+              .join('\n')}
+            className="press mt-2.5 flex w-full items-center gap-1.5 rounded-[var(--radius-md)] border border-warn/40 bg-warn/12 px-2 py-1.5 text-left text-[10.5px] leading-tight text-ink hover:brightness-110"
+          >
+            <AlertTriangle size={11} className="shrink-0" />
+            <span className="min-w-0 flex-1">{riskSentence(weekRisk)}</span>
+          </button>
+        )}
+
+        <Btn variant="primary" size="sm" onClick={onPlan} className="mt-2.5 w-full justify-center">
           <Wand2 size={13} /> Plan my day
         </Btn>
       </div>
