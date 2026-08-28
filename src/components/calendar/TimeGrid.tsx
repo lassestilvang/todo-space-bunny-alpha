@@ -14,6 +14,9 @@ import { MIN, atMinutes, clamp, fmtTime, isToday, snap } from '@/lib/date'
 import { cn, type Positioned } from '@/lib/selectors'
 import { activeItemPayload, hasItemPayload, readItemPayload, type DropPayload } from '@/lib/drag'
 import { riskForItem, riskTitle } from '@/lib/risk'
+import { metaFrom, nameMaps, type ResolvedMeta } from '@/lib/capture'
+import { parseInput } from '@/lib/nlp'
+import { ParsedChips } from '@/components/ParsedChips'
 
 export const GUTTER = 56
 export const MIN_BLOCK = 10
@@ -38,7 +41,7 @@ export type TimeGridProps = {
   selectedId?: string | null
   onOpen: (item: CalendarItem) => void
   onMove: (id: string, start: number, end: number) => void
-  onCreate: (day: Date, start: number, end: number, title: string) => void
+  onCreate: (day: Date, start: number, end: number, meta: ResolvedMeta) => void
   onContext: (item: CalendarItem, x: number, y: number) => void
   /** Schedules a dragged task or all-day event at a specific time. */
   onDropItem?: (payload: DropPayload, day: Date, startMin: number) => void
@@ -83,6 +86,10 @@ export function TimeGrid({
 
   const [composer, setComposer] = useState<{ day: number; start: number; end: number } | null>(null)
   const [composeText, setComposeText] = useState('')
+  const projects = useStore((s) => s.projects)
+  const labels = useStore((s) => s.labels)
+  /** What the field is understood to mean, shown as you type. */
+  const composeParsed = useMemo(() => parseInput(composeText), [composeText])
   const composeRef = useRef<HTMLInputElement>(null)
 
   /** Where a dragged task or all-day event would land if released now. */
@@ -259,9 +266,17 @@ export function TimeGrid({
     }
   }, [composer])
 
+  /**
+   * The drawn range is the clock; what you typed is everything else. A time in
+   * the text does not move the block — you placed it by dragging, so your word
+   * about the hour wins over the hour you happened to type.
+   */
   const commitComposer = (day: number, start: number, end: number) => {
-    const title = composeText.trim()
-    if (title) onCreate(days[day], start, end, title)
+    const text = composeText.trim()
+    if (text) {
+      const meta = metaFrom(parseInput(text), nameMaps(projects, labels))
+      if (meta.title) onCreate(days[day], start, end, meta)
+    }
     setComposer(null)
     setComposeText('')
   }
@@ -587,6 +602,11 @@ export function TimeGrid({
                         atMinutes(day, composer.end),
                       )}`}
                       className="w-full bg-transparent text-[12px] text-ink outline-none placeholder:text-ink-4"
+                    />
+                    <ParsedChips
+                      parsed={composeParsed}
+                      raw={composeText}
+                      className="mt-1.5 max-w-full gap-1"
                     />
                   </div>
                 )}
