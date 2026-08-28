@@ -18,6 +18,8 @@ import {
 import { useStore } from '@/lib/store'
 import type { ViewId } from '@/types'
 import { cn, smartList } from '@/lib/selectors'
+import { addDays, toKey } from '@/lib/date'
+import { riskReport } from '@/lib/risk'
 import { Btn, IconBtn, MenuItem, Modal, Popover, usePopover } from './ui'
 import { PomodoroWidget } from './Pomodoro'
 
@@ -90,6 +92,12 @@ export function Sidebar() {
     [allTasks],
   )
 
+  /** Today carries the number that matters: how much of it is actually at risk. */
+  const todayRisk = useMemo(() => {
+    const today = toKey(new Date())
+    return riskReport(allTasks, today, toKey(addDays(new Date(), 6)), Date.now()).total
+  }, [allTasks])
+
   const projectList = useMemo(
     () => Object.values(projects).filter((p) => !p.archived).sort((a, b) => a.order - b.order),
     [projects],
@@ -98,10 +106,12 @@ export function Sidebar() {
 
   const countFor = (id: ViewId): number | null => {
     if (id === 'inbox') return counts.inbox
-    if (id === 'today') return counts.today
+    if (id === 'today') return todayRisk > 0 ? todayRisk : counts.today
     if (id === 'upcoming') return counts.upcoming
     return null
   }
+
+  const riskyFor = (id: ViewId) => id === 'today' && todayRisk > 0
 
   const createProject = () => {
     const name = projectName.trim()
@@ -160,6 +170,7 @@ export function Sidebar() {
               collapsed={collapsed}
               active={view === n.id || (activeProject === 'all' && view === n.id)}
               count={countFor(n.id)}
+              risky={riskyFor(n.id)}
               onClick={() => setView(n.id)}
             />
           ))}
@@ -369,12 +380,14 @@ function NavRow({
   active,
   collapsed,
   count,
+  risky,
   onClick,
 }: {
   item: NavItem
   active: boolean
   collapsed: boolean
   count?: number | null
+  risky?: boolean
   onClick: () => void
 }) {
   const Icon = item.icon
@@ -393,7 +406,12 @@ function NavRow({
         <>
           <span className="min-w-0 flex-1 truncate">{item.label}</span>
           {count !== null && count !== undefined && count > 0 && (
-            <span className="tnum rounded-full bg-surface-3 px-1.5 py-[1px] text-[10px] text-ink-3">
+            <span
+              className={cn(
+                'tnum rounded-full px-1.5 py-[1px] text-[10px]',
+                risky ? 'bg-warn/20 text-warn' : 'bg-surface-3 text-ink-3',
+              )}
+            >
               {count}
             </span>
           )}
