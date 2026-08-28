@@ -155,6 +155,8 @@ export type Settings = {
   defaultDuration: number
   defaultPriority: Priority
   autoPlan: boolean
+  /** Minutes of focus a day counts as meeting the goal. */
+  focusGoalMin: number
   /** Minutes of buffer the planner leaves after a meeting. */
   bufferMin: number
   /** Longest continuous focus block the planner will create, in minutes. */
@@ -180,6 +182,7 @@ export type ChatMessage = {
 
 export type ViewId =
   | 'day'
+  | 'focus'
   | 'week'
   | 'month'
   | 'agenda'
