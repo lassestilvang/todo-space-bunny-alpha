@@ -48,6 +48,8 @@ export function TopBar({
 }) {
   const anchor = useStore((s) => s.ui.anchor)
   const tasks = useStore((s) => s.tasks)
+  const filters = useStore((s) => s.filters)
+  const activeFilter = useStore((s) => s.ui.filter)
   const settings = useStore((s) => s.settings)
   const setPanel = useStore((s) => s.setPanel)
   const view = useStore((s) => s.ui.view)
@@ -73,6 +75,10 @@ export function TopBar({
       return { big: `${MONTHS_LONG[d.getMonth()]}`, sub: String(d.getFullYear()) }
     }
     if (view === 'agenda') return { big: 'Agenda', sub: 'The next three weeks, in order' }
+    if (view === 'filter') {
+      const f = activeFilter ? filters[activeFilter] : null
+      if (f) return { big: f.name, sub: `${f.clauses.length} condition${f.clauses.length === 1 ? '' : 's'}` }
+    }
     const flat = FLAT[view as keyof typeof FLAT]
     if (flat) return flat
     if (isToday(d)) return { big: 'Today', sub: `${WEEKDAYS_LONG[d.getDay()]} ${d.getDate()} ${MONTHS_LONG[d.getMonth()]}` }
@@ -80,7 +86,7 @@ export function TopBar({
       big: WEEKDAYS_LONG[d.getDay()],
       sub: `${d.getDate()} ${MONTHS_LONG[d.getMonth()]} ${d.getFullYear()}`,
     }
-  }, [anchor, view])
+  }, [anchor, view, activeFilter, filters])
 
   const step = (dir: number) => {
     const d = fromKey(anchor)
