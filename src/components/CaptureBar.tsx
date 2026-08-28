@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { CornerDownLeft, Plus, Repeat2, Sparkles } from 'lucide-react'
+import { CornerDownLeft, Plus, Sparkles } from 'lucide-react'
 import { useStore } from '@/lib/store'
-import { fmtDateKey, fmtTime } from '@/lib/date'
+import { fmtDateKey } from '@/lib/date'
 import { parseInput, splitEntries, type ParsedInput, type TokenKind } from '@/lib/nlp'
 import { cn } from '@/lib/selectors'
 import { Kbd } from './ui'
+import { ParsedChips } from './ParsedChips'
+import { nameMaps } from '@/lib/capture'
 
 const TOKEN_COLOR: Record<TokenKind, string> = {
   date: 'var(--color-c-aqua)',
@@ -60,17 +62,7 @@ export function CaptureBar() {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
-  const projectByName = useMemo(() => {
-    const map = new Map<string, string>()
-    for (const p of Object.values(projects)) map.set(p.name.toLowerCase(), p.id)
-    return map
-  }, [projects])
-
-  const labelByName = useMemo(() => {
-    const map = new Map<string, string>()
-    for (const l of Object.values(labels)) map.set(l.name.toLowerCase(), l.id)
-    return map
-  }, [labels])
+  const { projectByName, labelByName } = useMemo(() => nameMaps(projects, labels), [projects, labels])
 
   const submit = () => {
     const entries = splitEntries(text)
@@ -199,50 +191,4 @@ function Highlighted({ text, parsed }: { text: string; parsed: ParsedInput | nul
   }
   if (cursor < text.length) parts.push(<span key="tail">{text.slice(cursor)}</span>)
   return <>{parts}</>
-}
-
-function ParsedChips({ parsed, raw }: { parsed: ParsedInput; raw: string }) {
-  const chips: { label: string; value: string; color?: string }[] = []
-  if (parsed.projects.length)
-    chips.push({ label: '#', value: parsed.projects.join(', '), color: 'var(--color-c-mint)' })
-  if (parsed.labels.length)
-    chips.push({ label: '@', value: parsed.labels.join(', '), color: 'var(--color-c-lime)' })
-  if (parsed.priority) chips.push({ label: 'P', value: String(parsed.priority), color: 'var(--color-c-rose)' })
-  if (parsed.due)
-    chips.push({ label: 'date', value: fmtDateKey(parsed.due, { weekday: true, year: false }), color: 'var(--color-c-aqua)' })
-  if (parsed.durationMin) chips.push({ label: 'for', value: `${parsed.durationMin}m`, color: 'var(--color-c-sand)' })
-  if (parsed.dayPart && parsed.dayPart !== 'any')
-    chips.push({ label: 'energy', value: parsed.dayPart, color: 'var(--color-c-saffron)' })
-  if (parsed.recurrence) chips.push({ label: 'repeat', value: 'yes', color: 'var(--color-c-orchid)' })
-  if (parsed.scheduledStart !== undefined)
-    chips.push({
-      label: 'block',
-      value: fmtTime(parsed.scheduledStart),
-      color: 'var(--color-c-iris)',
-    })
-
-  return (
-    <div className="anim-fade mx-auto flex max-w-[1180px] flex-wrap items-center gap-1.5 px-4 pt-2.5">
-      {chips.map((c) => (
-        <span
-          key={`${c.label}-${c.value}`}
-          className="inline-flex items-center gap-1.5 rounded-full border px-2 py-[2px] text-[11px]"
-          style={{
-            borderColor: `color-mix(in oklab, ${c.color ?? 'var(--color-ink-4)'} 35%, transparent)`,
-            color: c.color ?? 'var(--color-ink-3)',
-            background: `color-mix(in oklab, ${c.color ?? 'var(--color-ink-4)'} 8%, transparent)`,
-          }}
-        >
-          <span className="text-[9.5px] uppercase tracking-[0.1em] opacity-70">{c.label}</span>
-          <span className="text-ink-2">{c.value}</span>
-        </span>
-      ))}
-      {parsed.title !== raw.trim() && (
-        <span className="text-[11px] text-ink-4">
-          → <span className="text-ink-2">{parsed.title}</span>
-        </span>
-      )}
-      {parsed.recurrence && <Repeat2 size={11} className="text-ink-4" />}
-    </div>
-  )
 }
