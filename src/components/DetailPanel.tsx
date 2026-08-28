@@ -892,6 +892,21 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
               ? 'With no goal there is no streak, only the honest record of what you did.'
               : `${settings.focusGoalMin} minutes a day. Reaching it is what counts toward the streak in Focus and Review.`}
           </p>
+          <label className="flex cursor-pointer items-start justify-between gap-3 py-1.5">
+            <span className="min-w-0">
+              <span className="block text-[12.5px] text-ink-2">Sound</span>
+              <span className="mt-0.5 block text-[10.5px] leading-snug text-ink-4">
+                A short chime when a block or a break ends. Silent while this window is in the
+                background; your system volume is never overridden.
+              </span>
+            </span>
+            <input
+              type="checkbox"
+              checked={settings.soundOn}
+              onChange={(e) => set({ soundOn: e.target.checked })}
+              className="mt-0.5 size-[15px] shrink-0 accent-[var(--signal)]"
+            />
+          </label>
         </Group>
 
         <Group title="Assistant">
