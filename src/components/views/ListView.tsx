@@ -14,7 +14,7 @@ import { useStore } from '@/lib/store'
 import type { Task, ViewId } from '@/types'
 import { addDays, fmtRelativeDay, fmtTime, fromKey, toKey } from '@/lib/date'
 import { planRange, toBlocks } from '@/lib/planner'
-import { riskFor } from '@/lib/risk'
+import { riskFor, riskTitle } from '@/lib/risk'
 import { cn, cssColor, isOverdue, sortTasks } from '@/lib/selectors'
 import { Btn, Checkbox, Empty, IconBtn, Kbd, Seg } from '../ui'
 
@@ -268,7 +268,7 @@ export function ListView({ view, onPlan }: { view: ViewId; onPlan: () => void })
                     </span>
                     {finishesLate && (
                       <span
-                        title={`Finishes ${fmtRelativeDay(t.due)}`}
+                        title={riskTitle(t.due)}
                         className="shrink-0 text-warn"
                       >
                         <AlertTriangle size={11} />
