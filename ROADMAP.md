@@ -14,6 +14,12 @@ more truthful, more drivable, or more honest about time is out of scope.
 
 ## Now
 
+**Focus goal and history** — `done`. The Focus view puts the honest session record
+next to a target: a progress ring for today, a streak that counts days you *finished*
+at the goal, and seven days of bars with the goal drawn across them. The accounting
+lives in `src/lib/focus.ts` and Review now reads the same functions, so the two
+surfaces cannot report different numbers for the same day.
+
 **Focus mode** — `done`. `F` steps the whole app aside: one ring, the task you
 promised yourself, the phase, and what comes next. `Space` runs the session, `Esc`
 or a click away leaves, and the session keeps running while you are gone, so
@@ -33,19 +39,7 @@ never move, and nothing new gets scheduled. See README → *Keeping the plan tru
 
 ## Next up
 
-### 1. Focus goal and history — S
-
-Sessions are already logged honestly (completed count at planned length, abandoned
-at zero). Nothing consumes that yet.
-
-- A daily target in minutes, in Settings → Focus.
-- A 7-day history with a per-day bar, reusing the same numbers as Review.
-- A streak that counts days you hit the target, not days you opened the app.
-
-**Done when** the Focus view shows goal, streak, and a week of bars, and the numbers
-match the Review view exactly.
-
-### 2. Phase-change sound — S
+### 1. Phase-change sound — S
 
 The ticker is silent, so a finished phase is only noticed by looking. A single
 short tone, off by default, with a volume that respects the OS.
@@ -57,7 +51,7 @@ never while the window is unfocused and muted.
 
 ## Worth doing
 
-### 3. Auto-prioritise "the one thing" — M
+### 2. Auto-prioritise "the one thing" — M
 
 From Motion. The data exists; the judgement does not.
 
@@ -69,7 +63,7 @@ From Motion. The data exists; the judgement does not.
 **Done when** the top bar names what to do next and the answer visibly changes when
 the time of day, the priority, or a meeting moves.
 
-### 4. Saved filters — M
+### 3. Saved filters — M
 
 From Todoist, and the largest gap on the task side. Today, Upcoming and Inbox are
 hard-coded; there is no way to ask a question the app cannot answer.
@@ -81,7 +75,7 @@ hard-coded; there is no way to ask a question the app cannot answer.
 **Done when** a saved filter is a first-class sidebar entry, shareable by export,
 and that the same filter logic can drive a list view and the capture bar's default view.
 
-### 5. The drawn block takes a project — S
+### 4. The drawn block takes a project — S
 
 A consequence of routing grid creation through the inline field: it commits the raw
 title, so a block drawn on the calendar cannot pick up `#project`, `@label` or `!1`
@@ -90,7 +84,7 @@ the way typed capture does. The composer should run its text through the same pa
 **Done when** drawing a block and typing `plan the week #Studio !1` yields the project,
 label and priority, with the same live chips the capture bar shows.
 
-### 6. Recurring events — M
+### 5. Recurring events — M
 
 `recurrence` exists on `Task` only, so a standup cannot repeat. This is a
 correctness gap rather than a missing feature.
@@ -101,7 +95,7 @@ correctness gap rather than a missing feature.
 **Done when** a weekly meeting repeats, a single instance can be moved or cancelled,
 and the series is left alone.
 
-### 7. Subtasks count when planning — M
+### 6. Subtasks count when planning — M
 
 A task with three unfinished subtasks is planned as one block of its own duration.
 The planner should either lengthen the block or schedule the subtasks.
@@ -109,7 +103,7 @@ The planner should either lengthen the block or schedule the subtasks.
 **Done when** an incomplete subtask list changes the planned length, and completing
 subtasks is reflected in the block that represents the task.
 
-### 8. A 24-hour time field — S
+### 7. A 24-hour time field — S
 
 Four native `<input type="time">` widgets (event start and end, habit anchor, and
 working hours) render in the browser's locale format. Their values are 24-hour, but
@@ -123,7 +117,7 @@ the widget is not, which is inconsistent with the rest of the app.
 
 ## Bigger, later
 
-### 9. "Free up an hour" — L
+### 8. "Free up an hour" — L
 
 From Ellie. The assistant is seven intents deep: add, schedule, unschedule,
 complete, delete, priority, plan. It can execute but cannot negotiate.
@@ -137,7 +131,7 @@ complete, delete, priority, plan. It can execute but cannot negotiate.
 **Done when** a vague request returns options with previews, and applying one is a
 single undoable step that shows exactly what moved.
 
-### 10. Folders — M
+### 9. Folders — M
 
 From Todoist sections and TickTick lists. Projects are flat.
 
@@ -154,9 +148,10 @@ can span a folder.
 
 Not features — things that are wrong or missing and should not be forgotten.
 
-- The inline grid field does not parse `#project` / `@label` / `!1` (see item 5).
-- Four native time inputs follow browser locale, not 24-hour (item 8).
-- No unit tests. `scripts/verify.mjs` covers rendering and console cleanliness only.
+- The inline grid field does not parse `#project` / `@label` / `!1` (see item 4).
+- Four native time inputs follow browser locale, not 24-hour (item 7).
+- No unit tests. `scripts/verify.mjs` covers rendering and console cleanliness only
+  (fifteen surfaces now, including Focus).
   The planner and the NLP parser are pure functions and are the first things worth
   testing properly.
 - A `planLocked` block can sit underneath a meeting, because the user is allowed to
