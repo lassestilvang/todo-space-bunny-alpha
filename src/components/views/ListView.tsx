@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import {
   AlarmClock,
+  AlertTriangle,
   ArrowUpRight,
   CheckCheck,
   CirclePlus,
@@ -13,6 +14,7 @@ import { useStore } from '@/lib/store'
 import type { Task, ViewId } from '@/types'
 import { addDays, fmtRelativeDay, fmtTime, fromKey, toKey } from '@/lib/date'
 import { planRange, toBlocks } from '@/lib/planner'
+import { riskFor } from '@/lib/risk'
 import { cn, cssColor, isOverdue, sortTasks } from '@/lib/selectors'
 import { Btn, Checkbox, Empty, IconBtn, Kbd, Seg } from '../ui'
 
@@ -220,6 +222,7 @@ export function ListView({ view, onPlan }: { view: ViewId; onPlan: () => void })
               {items.map((t) => {
                 const color = cssColor(t.projectId ? projects[t.projectId]?.color : undefined)
                 const late = isOverdue(t)
+                const finishesLate = riskFor(t, Date.now()) === 'late'
                 return (
 <div
                       key={t.id}
@@ -263,6 +266,14 @@ export function ListView({ view, onPlan }: { view: ViewId; onPlan: () => void })
                     <span className="mono-clock hidden w-9 shrink-0 text-right text-[10.5px] text-ink-4 sm:block">
                       {t.durationMin}m
                     </span>
+                    {finishesLate && (
+                      <span
+                        title={`Finishes ${fmtRelativeDay(t.due)}`}
+                        className="shrink-0 text-warn"
+                      >
+                        <AlertTriangle size={11} />
+                      </span>
+                    )}
                     {t.scheduled ? (
                       <button
                         onClick={() => {
