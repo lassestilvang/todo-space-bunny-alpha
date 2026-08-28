@@ -41,7 +41,7 @@ export function clauseHolds(task: Task, clause: FilterClause, now: number): bool
     case 'priority':
       return task.priority === c.priority
     case 'due':
-      return dueIn(task, c, now)
+      return dueIn(task, c.window, now)
     case 'scheduled':
       return c.value === 'yes' ? !!task.scheduled : !task.scheduled
     case 'energy':
