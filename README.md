@@ -76,6 +76,9 @@ Settings → **Keep the plan true** turns the whole mechanism off, leaving the p
 - **Habits** with daily/weekdays/weekly/custom cadence, anchors, streaks, and honest counts.
 - **Focus timer** with rounds and long breaks, opened from the sidebar pill as a modal, or full-screen with `F`. Focus mode shows one ring, the task, and what comes next; `Space` runs the session and `Esc` leaves with the session still running. Timer state lives outside React, so no surface can interrupt a run. Finished focus blocks are logged as store records; break sessions never pollute the numbers.
 - **Assistant** works offline against a deterministic intent engine (add, schedule, unschedule, complete, delete, priority, plan). It opens as a modal. Supply an Anthropic or OpenAI key in Settings if you want model-written replies.
+- **Phase chime** (Settings → Focus, off by default). A short two-note tone when a
+  block or a break ends — low when a break starts, brighter when work resumes. Silent
+  while the window is in the background, and it never overrides your system volume.
 - **Focus** (`5` in the sidebar) puts the honest session record next to a daily goal:
   a progress ring, a streak that counts days you *finished* at the goal, and seven days
   of bars with the goal drawn across them. The numbers come from the same accounting as
