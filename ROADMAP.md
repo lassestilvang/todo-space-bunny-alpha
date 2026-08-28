@@ -14,6 +14,13 @@ more truthful, more drivable, or more honest about time is out of scope.
 
 ## Now
 
+**Saved filters** — `done`. A named question about your tasks, kept so you can ask it
+again. Conditions cover project, label, priority, due window, on-the-clock-or-not and
+energy, combined with *and*; the editor shows a live count of what answers it as you
+build it. Filters are stored entities, so they travel with the export, and they appear in
+the sidebar with their own counts. One matcher in `src/lib/filters.ts` serves the list
+view, the sidebar counts and the list's estimated total.
+
 **Auto-prioritise "the one thing"** — `done`. The top bar names the one to three blocks
 worth doing right now, scored by deadline pressure, priority, whether the kind of work
 suits the hour, and whether you placed the block yourself. The scoring is a pure function
@@ -50,19 +57,7 @@ never move, and nothing new gets scheduled. See README → *Keeping the plan tru
 
 ## Next up
 
-### 1. Saved filters — M
-
-From Todoist, and the largest gap on the task side. Today, Upcoming and Inbox are
-hard-coded; there is no way to ask a question the app cannot answer.
-
-- A filter of clauses: project, label, priority, due window, scheduled-or-not, energy.
-- Named filters appear in the sidebar and take a number for `1`–`9` navigation.
-- Filters are stored entities, exported with everything else.
-
-**Done when** a saved filter is a first-class sidebar entry, shareable by export,
-and that the same filter logic can drive a list view and the capture bar's default view.
-
-### 2. The drawn block takes a project — S
+### 1. The drawn block takes a project — S
 
 A consequence of routing grid creation through the inline field: it commits the raw
 title, so a block drawn on the calendar cannot pick up `#project`, `@label` or `!1`
@@ -71,7 +66,7 @@ the way typed capture does. The composer should run its text through the same pa
 **Done when** drawing a block and typing `plan the week #Studio !1` yields the project,
 label and priority, with the same live chips the capture bar shows.
 
-### 3. Recurring events — M
+### 2. Recurring events — M
 
 `recurrence` exists on `Task` only, so a standup cannot repeat. This is a
 correctness gap rather than a missing feature.
@@ -82,7 +77,7 @@ correctness gap rather than a missing feature.
 **Done when** a weekly meeting repeats, a single instance can be moved or cancelled,
 and the series is left alone.
 
-### 4. Subtasks count when planning — M
+### 3. Subtasks count when planning — M
 
 A task with three unfinished subtasks is planned as one block of its own duration.
 The planner should either lengthen the block or schedule the subtasks.
@@ -90,7 +85,7 @@ The planner should either lengthen the block or schedule the subtasks.
 **Done when** an incomplete subtask list changes the planned length, and completing
 subtasks is reflected in the block that represents the task.
 
-### 5. A 24-hour time field — S
+### 4. A 24-hour time field — S
 
 Four native `<input type="time">` widgets (event start and end, habit anchor, and
 working hours) render in the browser's locale format. Their values are 24-hour, but
@@ -104,7 +99,7 @@ the widget is not, which is inconsistent with the rest of the app.
 
 ## Bigger, later
 
-### 6. "Free up an hour" — L
+### 5. "Free up an hour" — L
 
 From Ellie. The assistant is seven intents deep: add, schedule, unschedule,
 complete, delete, priority, plan. It can execute but cannot negotiate.
@@ -118,7 +113,7 @@ complete, delete, priority, plan. It can execute but cannot negotiate.
 **Done when** a vague request returns options with previews, and applying one is a
 single undoable step that shows exactly what moved.
 
-### 7. Folders — M
+### 6. Folders — M
 
 From Todoist sections and TickTick lists. Projects are flat.
 
@@ -135,10 +130,14 @@ can span a folder.
 
 Not features — things that are wrong or missing and should not be forgotten.
 
-- The inline grid field does not parse `#project` / `@label` / `!1` (see item 2).
-- Four native time inputs follow browser locale, not 24-hour (item 5).
+- The inline grid field does not parse `#project` / `@label` / `!1` (see item 1).
+- Four native time inputs follow browser locale, not 24-hour (item 4).
 - No unit tests. `scripts/verify.mjs` covers rendering and console cleanliness only
   (fifteen surfaces now, including Focus).
+- Saved filters cover project, label, priority, due window, on-the-clock and energy.
+  The brief also mentioned driving "the capture bar's default view"; that clause is not
+  implemented, because nothing in the capture flow wanted a saved filter and inventing one
+  would have meant guessing.
   The planner and the NLP parser are pure functions and are the first things worth
   testing properly.
 - A `planLocked` block can sit underneath a meeting, because the user is allowed to
