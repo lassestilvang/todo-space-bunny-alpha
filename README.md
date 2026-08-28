@@ -71,8 +71,13 @@ Settings → **Keep the plan true** turns the whole mechanism off, leaving the p
 
 ## Everything else
 
+- **Saved filters** — a named question about your tasks, kept so you can ask it again.
+  Conditions on project, label, priority, due window, whether it is on the clock, and
+  energy, combined with *and*. Filters live in the sidebar with a live count, take the
+  number keys after the fixed views, and travel with your export.
 - **Quick capture** parses `#project`, `@label`, `!1`–`!4`, `tomorrow`, `at 9:30`, `for 45m`, `every tue`, and shows a live reading of what it understood. Typed times may be 12- or 24-hour; everything Tempo renders is 24-hour.
-- **Views**: day, week, month, agenda (7/14/21 days), inbox/today/upcoming lists, focus, Eisenhower matrix, project board, habits, notes, review.
+- **Views**: day, week, month, agenda (7/14/21 days), inbox/today/upcoming lists, saved
+  filters, focus, Eisenhower matrix, project board, habits, notes, review.
 - **Habits** with daily/weekdays/weekly/custom cadence, anchors, streaks, and honest counts.
 - **Focus timer** with rounds and long breaks, opened from the sidebar pill as a modal, or full-screen with `F`. Focus mode shows one ring, the task, and what comes next; `Space` runs the session and `Esc` leaves with the session still running. Timer state lives outside React, so no surface can interrupt a run. Finished focus blocks are logged as store records; break sessions never pollute the numbers.
 - **Assistant** works offline against a deterministic intent engine (add, schedule, unschedule, complete, delete, priority, plan). It opens as a modal. Supply an Anthropic or OpenAI key in Settings if you want model-written replies.
@@ -104,7 +109,8 @@ Press `?` for this list in the app.
 | `Enter` / `Shift Enter` | Create the task / add a line |
 | `T` `D` `W` `M` `A` | Today, day, week, month, agenda |
 | `P` | Open the planner |
-| `1`–`9` | Jump to a view by number |
+| `1`–`8` | Jump to a view by number |
+| `9` | First saved filter, or Habits when you have none |
 | `G` then `I` / `T` / `U` / `D` / `W` | Inbox, today, upcoming, day, week |
 | `Cmd K` | Command palette |
 | `F` | Enter or leave focus mode |
