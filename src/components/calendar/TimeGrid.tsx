@@ -8,11 +8,12 @@ import {
   type CSSProperties,
   type PointerEvent as RPointerEvent,
 } from 'react'
-import { Lock, Sparkles } from 'lucide-react'
+import { AlertTriangle, Lock, Sparkles } from 'lucide-react'
 import type { CalendarItem } from '@/types'
-import { MIN, atMinutes, clamp, fmtTime, isToday, snap } from '@/lib/date'
+import { MIN, atMinutes, clamp, fmtRelativeDay, fmtTime, isToday, snap } from '@/lib/date'
 import { cn, type Positioned } from '@/lib/selectors'
 import { activeItemPayload, hasItemPayload, readItemPayload, type DropPayload } from '@/lib/drag'
+import { riskForItem } from '@/lib/risk'
 
 export const GUTTER = 56
 export const MIN_BLOCK = 10
@@ -432,6 +433,7 @@ export function TimeGrid({
                   // padding and drop the time line rather than clipping text.
                   const band = (visible ?? h) < 34
                   const compact = (visible ?? h) < 40
+                  const atRisk = riskForItem(item, now) === 'late'
                   return (
                     <div
                       key={item.id}
@@ -488,6 +490,14 @@ export function TimeGrid({
                         onContext(item, e.clientX, e.clientY)
                       }}
                     >
+                      {atRisk && h > 22 && (
+                        <span
+                          title={`Finishes ${fmtRelativeDay((item.ref as { due?: string }).due)}`}
+                          className="pointer-events-none absolute bottom-[4px] right-[5px] z-10 text-warn"
+                        >
+                          <AlertTriangle size={11} />
+                        </span>
+                      )}
                       {item.kind === 'event' && item.tentative && (
                         <div className="mb-[1px] flex items-center gap-1 text-[9px] uppercase tracking-[0.08em] text-ink-3">
                           <Lock size={9} /> tentative
