@@ -1,5 +1,5 @@
 import type { CalendarItem, Task } from '@/types'
-import { atMinutes, fromKey, toKey } from './date'
+import { atMinutes, fmtRelativeDay, fromKey, toKey } from './date'
 
 /** The moment a task's due date runs out: the end of that local day. */
 export function dueBy(key: string): number {
@@ -52,6 +52,12 @@ export function riskReport(tasks: Task[], from: string, to: string, now: number)
     else if (kind === 'unplaced') unplaced.push(t)
   }
   return { late, unplaced, total: late.length + unplaced.length }
+}
+
+/** Tooltip for a flagged block: the block sits after the day the work was due. */
+export function riskTitle(due: string | undefined): string {
+  const when = due ? fmtRelativeDay(due) : 'its due date'
+  return `Block finishes after it was due (${when})`
 }
 
 export { EMPTY as NO_RISK }
