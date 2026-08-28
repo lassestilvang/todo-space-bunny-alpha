@@ -4,6 +4,7 @@ import { useStore } from '@/lib/store'
 import type { ViewId } from '@/types'
 import {
   addDays,
+  fmtTime,
   fromKey,
   isToday,
   isoWeekNumber,
@@ -11,6 +12,8 @@ import {
   startOfWeek,
   WEEKDAYS_LONG,
 } from '@/lib/date'
+import { adviseNow } from '@/lib/advise'
+import { useNow } from '@/lib/useNow'
 import { cn, minutesLabel } from '@/lib/selectors'
 import { Btn, IconBtn, Kbd, Seg } from './ui'
 
@@ -44,6 +47,9 @@ export function TopBar({
   load: { planned: number; capacity: number; items: number }
 }) {
   const anchor = useStore((s) => s.ui.anchor)
+  const tasks = useStore((s) => s.tasks)
+  const settings = useStore((s) => s.settings)
+  const setPanel = useStore((s) => s.setPanel)
   const view = useStore((s) => s.ui.view)
   const setView = useStore((s) => s.setView)
   const setAnchor = useStore((s) => s.setAnchor)
@@ -86,6 +92,13 @@ export function TopBar({
   const pct = load.capacity ? Math.min(100, Math.round((load.planned / load.capacity) * 100)) : 0
   const isDateView = view === 'day' || view === 'week' || view === 'month'
 
+  // A minute is often enough to notice the hour changed; this only advises.
+  const now = useNow(60_000)
+  const advice = useMemo(
+    () => adviseNow(Object.values(tasks), settings, now, 3),
+    [tasks, settings, now],
+  )
+
   return (
     <header className="relative z-30 flex h-14 shrink-0 items-center gap-3 border-b border-line bg-bg px-3">
       {/* navigation — only where the anchor date means something */}
@@ -119,6 +132,33 @@ export function TopBar({
           </span>
         </div>
       </div>
+
+      {/* what to do now — advice, never an action */}
+      {advice.length > 0 && (
+        <div className="hidden min-w-0 items-center gap-1.5 xl:flex">
+          <span className="text-[9.5px] font-semibold uppercase tracking-[0.14em] text-ink-4">
+            Now
+          </span>
+          {advice.map((a, i) => (
+            <button
+              key={a.task.id}
+              onClick={() => setPanel({ kind: 'task', id: a.task.id })}
+              title={`${a.task.title} — ${a.why}`}
+              className={cn(
+                'press flex min-w-0 max-w-[150px] items-center gap-1.5 rounded-full border px-2 py-[3px] text-[10.5px]',
+                i === 0
+                  ? 'border-signal/45 bg-signal/10 text-ink hover:bg-signal/16'
+                  : 'border-line bg-surface-2 text-ink-3 hover:text-ink-2',
+              )}
+            >
+              <span className="mono-clock tnum shrink-0 text-[9.5px] text-signal">
+                {fmtTime(a.start)}
+              </span>
+              <span className="truncate">{a.task.title}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* load meter */}
       {isDateView && load.items > 0 && (
