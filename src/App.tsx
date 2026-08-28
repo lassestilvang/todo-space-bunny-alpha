@@ -146,10 +146,9 @@ export default function App() {
           e.preventDefault()
           // Opening focus mode opens the timer behind it; the modal stays closed
           // while the surface is up, so nothing is on screen but the session.
-          setFocus((on) => {
-            if (!on) openTimer()
-            return !on
-          })
+          // Deliberately outside the updater: that runs during render.
+          if (!focus) openTimer()
+          setFocus((on) => !on)
           return
           return
       }
