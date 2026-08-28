@@ -1,3 +1,4 @@
+import { focusMinutesOf, isOpenSession } from '@/lib/focus'
 import { useMemo, useState } from 'react'
 import {
   AlertTriangle,
@@ -6,10 +7,8 @@ import {
   CheckCircle2,
   Timer,
 } from 'lucide-react'
-import type { FocusSession } from '@/types'
 import {
   DAY,
-  MIN,
   addDays,
   startOfDay,
   startOfWeek,
@@ -29,23 +28,6 @@ import { Btn, Empty, Ring, SectionTitle, Seg } from '@/components/ui'
 type Range = '7' | '30' | '90'
 
 const DAY_MS = DAY
-
-/**
- * A finished focus session is worth its full planned length. A session that
- * is still open contributes only the time actually elapsed; one that was
- * abandoned before its planned end contributes nothing, because no attention
- * was recorded for it.
- */
-function focusMinutesOf(s: FocusSession, now: number): number {
-  if (s.completed) return s.minutes
-  const plannedEnd = s.start + s.minutes * MIN
-  if (plannedEnd > now) return Math.max(0, (now - s.start) / MIN)
-  return 0
-}
-
-function isOpenSession(s: FocusSession, now: number): boolean {
-  return !s.completed && s.start + s.minutes * MIN > now
-}
 
 /* ------------------------------------------------------------------ bars */
 
