@@ -15,6 +15,7 @@ import type { Task, ViewId } from '@/types'
 import { addDays, fmtRelativeDay, fmtTime, fromKey, toKey } from '@/lib/date'
 import { planRange, toBlocks } from '@/lib/planner'
 import { riskFor, riskTitle } from '@/lib/risk'
+import { describeClause, filterTasks } from '@/lib/filters'
 import { cn, cssColor, isOverdue, sortTasks } from '@/lib/selectors'
 import { Btn, Checkbox, Empty, IconBtn, Kbd, Seg } from '../ui'
 
@@ -38,6 +39,7 @@ const COPY: Record<string, { title: string; sub: string }> = {
 export function ListView({ view, onPlan }: { view: ViewId; onPlan: () => void }) {
   const tasks = useStore((s) => s.tasks)
   const projects = useStore((s) => s.projects)
+  const labels = useStore((s) => s.labels)
   const events = useStore((s) => s.events)
   const habits = useStore((s) => s.habits)
   const settings = useStore((s) => s.settings)
@@ -50,6 +52,9 @@ export function ListView({ view, onPlan }: { view: ViewId; onPlan: () => void })
   const setView = useStore((s) => s.setView)
   const toast = useStore((s) => s.toast)
   const activeProject = useStore((s) => s.ui.activeProject)
+  const filters = useStore((s) => s.filters)
+  const activeFilter = useStore((s) => s.ui.filter)
+  const selectFilter = useStore((s) => s.setFilter)
   const [filter, setFilter] = useState<Filter>('all')
   const [selected, setSelected] = useState<Set<string>>(new Set())
 
@@ -76,10 +81,15 @@ export function ListView({ view, onPlan }: { view: ViewId; onPlan: () => void })
         return sortTasks(open.filter((t) => t.due === today || (t.scheduled && toKey(t.scheduled.start) === today)))
       case 'upcoming':
         return sortTasks(open.filter((t) => t.due && t.due > today))
+      case 'filter': {
+        const f = activeFilter ? filters[activeFilter] : null
+        if (!f) return sortTasks(open)
+        return sortTasks(filterTasks(open, f, Date.now()))
+      }
       default:
         return sortTasks(open)
     }
-  }, [scoped, view, filter, today])
+  }, [scoped, view, filter, today, activeFilter, filters])
 
   const filtered = useMemo(() => {
     if (filter === 'priority') return list.filter((t) => t.priority <= 2)
@@ -134,7 +144,25 @@ export function ListView({ view, onPlan }: { view: ViewId; onPlan: () => void })
       return next
     })
 
-  const copy = COPY[view] ?? { title: 'Tasks', sub: '' }
+  const copy =
+    view === 'filter' && activeFilter && filters[activeFilter]
+      ? {
+          title: filters[activeFilter].name,
+          sub:
+            filters[activeFilter].clauses.length === 0
+              ? 'Every open task. Add conditions to narrow this down.'
+              : 'Tasks that answer every condition below.',
+        }
+      : (COPY[view] ?? { title: 'Tasks', sub: '' })
+  const clauseChips = view === 'filter' && activeFilter ? filters[activeFilter]?.clauses ?? [] : []
+  const projectNames = useMemo(
+    () => Object.fromEntries(Object.values(projects).map((p) => [p.id, p.name])),
+    [projects],
+  )
+  const labelNames = useMemo(
+    () => Object.fromEntries(Object.values(labels).map((l) => [l.id, l.name])),
+    [labels],
+  )
 
   return (
     <div className="min-h-0 flex-1 overflow-y-auto">
@@ -157,6 +185,24 @@ export function ListView({ view, onPlan }: { view: ViewId; onPlan: () => void })
               {filtered.length} item{filtered.length === 1 ? '' : 's'} · {Math.floor(totalMin / 60)}h{' '}
               {totalMin % 60}m estimated
             </span>
+            {clauseChips.length > 0 && (
+              <span className="flex flex-wrap items-center gap-1">
+                {clauseChips.map((c, i) => (
+                  <span
+                    key={i}
+                    className="mono-clock rounded-full border border-line bg-surface-2 px-2 py-[2px] text-[10px] text-ink-3"
+                  >
+                    {describeClause(c, { projects: projectNames, labels: labelNames })}
+                  </span>
+                ))}
+                <button
+                  onClick={() => selectFilter(null)}
+                  className="press ml-1 text-[10.5px] text-ink-4 hover:text-ink-2"
+                >
+                  clear
+                </button>
+              </span>
+            )}
             {unplacedToday.length > 0 && (
               <Btn variant="primary" size="sm" onClick={placeAll} className="ml-auto">
                 <Wand2 size={13} /> Place {unplacedToday.length} for today
