@@ -121,9 +121,8 @@ export function FocusView() {
           </div>
 
           <p className="mt-4 text-[11px] text-ink-4">
-            {met} of {week.length} days reached {minutesLabel(goal)}
-            {streak > 1 ? ` · longest run in this window is ${streak}` : ''}. The dashed line
-            is the goal; a bar that reaches it counts toward the streak.
+            {met} of {week.length} days reached {minutesLabel(goal)}. The dashed line is the goal;
+            a bar that reaches it counts toward the streak.
           </p>
         </section>
 
