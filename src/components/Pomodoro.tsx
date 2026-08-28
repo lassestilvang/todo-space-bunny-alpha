@@ -556,6 +556,11 @@ function TimerEffects() {
   return null
 }
 
+/** Show the small timer panel, wherever the caller lives. */
+export function openTimer(): void {
+  set({ open: true })
+}
+
 /** The timer pill lives in the sidebar footer; the panel is a modal. */
 export function PomodoroDock({ suppressModal = false }: { suppressModal?: boolean } = {}) {
   const t = useTimer()
