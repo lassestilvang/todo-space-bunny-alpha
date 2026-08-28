@@ -254,8 +254,7 @@ export function FilterEditor({
         {clauses.length > 1 && (
           <p className="flex items-start gap-1.5 text-[10.5px] leading-snug text-ink-4">
             <Filter size={11} className="mt-[1px] shrink-0" />
-            Conditions are combined with <span className="mono-clock">and</span>: a task has to
-            answer all of them.
+            A task has to answer all of them, so two conditions narrow faster than three.
           </p>
         )}
       </div>
