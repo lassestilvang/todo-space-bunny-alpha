@@ -249,7 +249,7 @@ export function Sidebar() {
           </Group>
         )}
 
-        <Group title={collapsed ? '' : 'Studio'}>
+        <Group title={collapsed ? '' : 'Work'}>
           {WORK.map((n) => (
             <NavRow
               key={n.id}
