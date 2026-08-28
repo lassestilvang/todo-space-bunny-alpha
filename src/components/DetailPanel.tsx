@@ -877,6 +877,23 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
           </label>
         </Group>
 
+        <Group title="Focus">
+          <NumRow
+            label="Daily goal"
+            value={settings.focusGoalMin}
+            min={0}
+            max={480}
+            onChange={(v) => set({ focusGoalMin: v })}
+            format={(v) => (v === 0 ? 'off' : `${Math.round((v / 25) * 10) / 10} blocks`)}
+            step={25}
+          />
+          <p className="pb-1.5 text-[10.5px] leading-snug text-ink-4">
+            {settings.focusGoalMin === 0
+              ? 'With no goal there is no streak, only the honest record of what you did.'
+              : `${settings.focusGoalMin} minutes a day. Reaching it is what counts toward the streak in Focus and Review.`}
+          </p>
+        </Group>
+
         <Group title="Assistant">
           <label className="block py-1.5">
             <span className="text-[12.5px] text-ink-2">Model</span>
