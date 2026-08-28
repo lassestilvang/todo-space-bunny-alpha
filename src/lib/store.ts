@@ -12,6 +12,7 @@ import type {
   Project,
   Settings,
   Task,
+  TaskFilter,
   TimeRange,
   ViewId,
 } from '@/types'
@@ -36,6 +37,7 @@ type Entities = {
   docs: Record<ID, Doc>
   projects: Record<ID, Project>
   labels: Record<ID, Label>
+  filters: Record<ID, TaskFilter>
 }
 
 type Snapshot = Entities
@@ -51,6 +53,8 @@ type UIState = {
   paletteOpen: boolean
   captureOpen: boolean
   capturePrefill: string
+  /** The saved filter currently answering "what am I looking at". */
+  filter: ID | null
   activeProject: ID | 'all' | 'none'
   calendarFocus: number
   planOpen: boolean
@@ -68,7 +72,7 @@ type State = Entities & {
 
 type NewTask = Partial<Task> & { title: string }
 
-const ENTITIES: (keyof Entities)[] = ['tasks', 'events', 'habits', 'docs', 'projects', 'labels']
+const ENTITIES: (keyof Entities)[] = ['tasks', 'events', 'habits', 'docs', 'projects', 'labels', 'filters']
 
 const snapshot = (s: State): Snapshot => ({
   tasks: s.tasks,
@@ -77,6 +81,7 @@ const snapshot = (s: State): Snapshot => ({
   docs: s.docs,
   projects: s.projects,
   labels: s.labels,
+  filters: s.filters,
 })
 
 const HISTORY_LIMIT = 60
@@ -138,6 +143,11 @@ type Actions = {
    */
   refitRange: (fromKey: string, days: number) => RefitSummary
 
+  /* filters */
+  addFilter: (f: Partial<TaskFilter> & { name: string }) => ID
+  updateFilter: (id: ID, patch: Partial<TaskFilter>) => void
+  deleteFilter: (id: ID) => void
+
   /* settings + ui */
   setSettings: (patch: Partial<Settings>) => void
   setView: (v: ViewId) => void
@@ -145,6 +155,8 @@ type Actions = {
   setPanel: (p: PanelId) => void
   setPalette: (open: boolean) => void
   setCapture: (open: boolean, prefill?: string) => void
+  /** Opens the saved filter on the list view; null clears it. */
+  setFilter: (id: ID | null) => void
   setPlanOpen: (open: boolean) => void
   setHelpOpen: (open: boolean) => void
   setAssistant: (open: boolean) => void
@@ -219,6 +231,7 @@ export const useStore = create<State & Actions>()(
         paletteOpen: false,
         captureOpen: true,
         capturePrefill: '',
+        filter: null,
         activeProject: 'all',
         calendarFocus: 0,
         planOpen: false,
@@ -670,6 +683,36 @@ export const useStore = create<State & Actions>()(
       setCapture: (open, prefill = '') =>
         set((s) => ({ ui: { ...s.ui, captureOpen: open, capturePrefill: prefill } })),
       setPlanOpen: (open) => set((s) => ({ ui: { ...s.ui, planOpen: open } })),
+      addFilter: (f) => {
+        const id = uid('flt')
+        set((s) => ({
+          filters: {
+            ...s.filters,
+            [id]: { id, name: f.name, clauses: f.clauses ?? [], order: Object.keys(s.filters).length },
+          },
+          ui: { ...s.ui, filter: id, view: 'filter' },
+        }))
+        return id
+      },
+      updateFilter: (id, patch) =>
+        set((s) => {
+          const cur = s.filters[id]
+          if (!cur) return {}
+          return { filters: { ...s.filters, [id]: { ...cur, ...patch, id } } }
+        }),
+      deleteFilter: (id) =>
+        set((s) => {
+          const filters = { ...s.filters }
+          delete filters[id]
+          return {
+            filters,
+            ui: { ...s.ui, filter: s.ui.filter === id ? null : s.ui.filter },
+          }
+        }),
+      setFilter: (id) =>
+        set((s) => ({
+          ui: { ...s.ui, filter: id, view: id ? 'filter' : s.ui.view === 'filter' ? 'today' : s.ui.view },
+        })),
       setHelpOpen: (open) => set((s) => ({ ui: { ...s.ui, helpOpen: open } })),
       setAssistant: (open) => set((s) => ({ ui: { ...s.ui, panel: open ? s.ui.panel : null } , settings: { ...s.settings, assistantOpen: open } })),
       setActiveProject: (id) => set((s) => ({ ui: { ...s.ui, activeProject: id } })),
