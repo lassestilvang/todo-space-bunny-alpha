@@ -28,6 +28,7 @@ const FLAT: Partial<Record<ViewId, { big: string; sub: string }>> = {
   upcoming: { big: 'Upcoming', sub: 'Everything ahead of you, in order' },
   matrix: { big: 'Matrix', sub: 'Urgent against important' },
   kanban: { big: 'Board', sub: 'Work moving across projects' },
+  focus: { big: 'Focus', sub: 'Time on task, against what you meant to do' },
   habits: { big: 'Habits', sub: 'Cadence, streaks, and honesty' },
   docs: { big: 'Notes', sub: 'Long-form thinking, autosaved' },
   stats: { big: 'Review', sub: 'Where the time actually went' },
