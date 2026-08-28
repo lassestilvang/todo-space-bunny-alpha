@@ -84,6 +84,10 @@ Settings → **Keep the plan true** turns the whole mechanism off, leaving the p
   of bars with the goal drawn across them. The numbers come from the same accounting as
   Review — a finished session counts at its planned length, a running one at elapsed time,
   an abandoned one at nothing.
+- **"Now"** — the top bar names the one to three blocks worth doing at this moment,
+  scored by deadline pressure, priority, whether this kind of work suits the hour, and
+  whether you placed the block yourself. It only advises: it never moves anything, and
+  clicking a name opens the task.
 - **Planner** fills real openings — working hours, meetings, buffers, priority, estimated duration, `deep`/`shallow`/`admin` energy, preferred daypart and habit anchors — never stacking work on top of anything.
 - **Review** reports where time actually went, counting completed sessions at their planned length and abandoned ones at zero.
 - **Overlapping blocks cascade** instead of splitting the column into narrow lanes. Each colliding block is a full-width band that steps down and right a little further and paints over the one above, so three meetings at 09:30 all stay readable with their titles intact. The step is capped by the shortest block, and thin bands tighten their padding and drop the time line rather than clipping text.
