@@ -420,8 +420,9 @@ export function ListView({ view, onPlan }: { view: ViewId; onPlan: () => void })
           <div className="panel anim-rise flex items-center gap-3 p-3.5">
             <div className="min-w-0 flex-1">
               <div className="text-[12.5px] text-ink">
-                {unplacedToday.length} task{unplacedToday.length === 1 ? '' : 's'} for today still
-                have no time
+                {unplacedToday.length === 1
+                  ? 'One task for today still has no time'
+                  : `${unplacedToday.length} tasks for today still have no time`}
               </div>
               <div className="text-[11.5px] text-ink-4">
                 The planner can lay them out in the gaps you already have.
