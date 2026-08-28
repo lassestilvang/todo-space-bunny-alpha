@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Sidebar } from './components/Sidebar'
 import { TopBar } from './components/TopBar'
 import { CaptureBar } from './components/CaptureBar'
@@ -46,6 +46,18 @@ export default function App() {
   const theme = useStore((s) => s.settings.theme)
   const planOpen = useStore((s) => s.ui.planOpen)
   const captureOpen = useStore((s) => s.ui.captureOpen)
+  const filters = useStore((s) => s.filters)
+  // Saved filters take the numbers after the fixed views, so 1-9 always lands
+  // somewhere and the last slots follow your own questions.
+  const numbers = useMemo<string[]>(
+    () => [
+      ...VIEW_BY_NUMBER,
+      ...Object.values(filters)
+        .sort((a, b) => a.order - b.order)
+        .map((f) => f.id),
+    ],
+    [filters],
+  )
   const [load, setLoad] = useState({ planned: 0, capacity: 0, items: 0 })
   /** Focus mode: the app steps aside, the session does not. */
   const [focus, setFocus] = useState(false)
@@ -154,10 +166,13 @@ export default function App() {
       }
 
       if (/^[1-9]$/.test(e.key)) {
-        const v = VIEW_BY_NUMBER[Number(e.key) - 1]
+        const v = numbers[Number(e.key) - 1]
         if (v) {
           e.preventDefault()
-          s.setView(v)
+          // A saved filter answers by selecting itself, not by switching view.
+          const filter = s.filters[v]
+          if (filter) s.setFilter(filter.id)
+          else s.setView(v as ViewId)
         }
         return
       }
@@ -196,7 +211,7 @@ export default function App() {
       window.removeEventListener('keydown', onKey)
       window.clearTimeout(gTimer)
     }
-  }, [focus])
+  }, [focus, numbers])
 
   const showCapture = captureOpen && (view === 'day' || view === 'week' || view === 'agenda' || view === 'inbox' || view === 'today' || view === 'upcoming')
 
