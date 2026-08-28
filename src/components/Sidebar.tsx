@@ -13,6 +13,7 @@ import {
   Plus,
   Sun,
   Target,
+  Timer,
   TrendingUp,
 } from 'lucide-react'
 import { useStore } from '@/lib/store'
@@ -45,6 +46,7 @@ const LISTS: NavItem[] = [
 ]
 
 const WORK: NavItem[] = [
+  { id: 'focus', label: 'Focus', icon: Timer, group: 'work' },
   { id: 'habits', label: 'Habits', icon: Flame, group: 'work' },
   { id: 'kanban', label: 'Board', icon: Columns3, group: 'work' },
   { id: 'matrix', label: 'Matrix', icon: ChartNoAxesColumn, group: 'work' },
