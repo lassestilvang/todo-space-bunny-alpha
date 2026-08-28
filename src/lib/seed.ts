@@ -23,6 +23,7 @@ export const DEFAULT_SETTINGS: Settings = {
   defaultPriority: 4,
   autoPlan: true,
   focusGoalMin: 100, // four 25-minute blocks
+  soundOn: false,
   bufferMin: 10,
   maxBlockMin: 120,
   llm: { enabled: false, provider: 'anthropic', model: 'claude-sonnet-4-5', apiKey: '', endpoint: '' },
