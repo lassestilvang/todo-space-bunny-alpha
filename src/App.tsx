@@ -9,7 +9,7 @@ import { CommandPalette } from './components/CommandPalette'
 import { PlanSheet } from './components/PlanSheet'
 import { Shortcuts } from './components/Shortcuts'
 import { Toasts } from './components/Toasts'
-import { FocusSurface, PomodoroDock } from './components/Pomodoro'
+import { FocusSurface, PomodoroDock, openTimer } from './components/Pomodoro'
 import { MonthView } from './components/views/MonthView'
 import { AgendaView } from './components/views/AgendaView'
 import { MatrixView } from './components/views/MatrixView'
@@ -17,6 +17,7 @@ import { KanbanView } from './components/views/KanbanView'
 import { HabitsView } from './components/views/HabitsView'
 import { DocsView } from './components/views/DocsView'
 import { StatsView } from './components/views/StatsView'
+import { FocusView } from './components/views/FocusView'
 import { ListView } from './components/views/ListView'
 import { useStore, syncTheme } from './lib/store'
 import { cn } from './lib/selectors'
@@ -29,6 +30,7 @@ const VIEW_BY_NUMBER: ViewId[] = [
   'week',
   'month',
   'agenda',
+  'focus',
   'inbox',
   'today',
   'upcoming',
@@ -145,7 +147,7 @@ export default function App() {
           // Opening focus mode opens the timer behind it; the modal stays closed
           // while the surface is up, so nothing is on screen but the session.
           setFocus((on) => {
-            if (!on) document.querySelector<HTMLButtonElement>('[aria-label*="Open timer"]')?.click()
+            if (!on) openTimer()
             return !on
           })
           return
@@ -225,6 +227,7 @@ export default function App() {
             {view === 'habits' && <HabitsView />}
             {view === 'docs' && <DocsView />}
             {view === 'stats' && <StatsView />}
+            {view === 'focus' && <FocusView />}
             {view === 'assistant' && <AssistantGate />}
           </div>
           {showCapture && <CaptureBar />}
