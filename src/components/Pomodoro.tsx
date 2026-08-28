@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import {
+  Check,
   Coffee,
   Minus,
   Pause,
@@ -14,7 +15,7 @@ import type { ID } from '@/types'
 import { MIN, fmtTime } from '@/lib/date'
 import { cn, minutesLabel, sortTasks } from '@/lib/selectors'
 import { useStore } from '@/lib/store'
-import { Btn, Chip, IconBtn, Input, Modal, SectionTitle } from '@/components/ui'
+import { Btn, Chip, IconBtn, Input, Kbd, Modal, SectionTitle } from '@/components/ui'
 
 /* ================================================================
    Timer core — a tiny module singleton.
@@ -311,6 +312,7 @@ function DrainingRing({
   children,
   size = 170,
   stroke = 7,
+  tone = 'auto',
 }: {
   remaining: number
   total: number
@@ -318,6 +320,8 @@ function DrainingRing({
   children: ReactNode
   size?: number
   stroke?: number
+  /** `signal` keeps the arc amber even when idle, for the focus surface. */
+  tone?: 'auto' | 'signal'
 }) {
   const r = (size - stroke) / 2
   const c = 2 * Math.PI * r
@@ -335,7 +339,7 @@ function DrainingRing({
           cy={size / 2}
           r={r}
           fill="none"
-          stroke={running ? 'var(--signal)' : 'var(--ink-4)'}
+          stroke={running || tone === 'signal' ? 'var(--signal)' : 'var(--ink-4)'}
           strokeWidth={stroke}
           strokeLinecap="round"
           strokeDasharray={c}
@@ -553,13 +557,13 @@ function TimerEffects() {
 }
 
 /** The timer pill lives in the sidebar footer; the panel is a modal. */
-export function PomodoroDock() {
+export function PomodoroDock({ suppressModal = false }: { suppressModal?: boolean } = {}) {
   const t = useTimer()
   return (
     <>
       <TimerEffects />
       <Modal
-        open={t.open}
+        open={t.open && !suppressModal}
         onClose={() => set({ open: false })}
         width={420}
         title={
@@ -581,6 +585,124 @@ export function PomodoroDock() {
         <PomodoroPanel />
       </Modal>
     </>
+  )
+}
+
+/**
+ * Focus mode: the whole app steps aside so the only thing on screen is the
+ * block of time you promised yourself. The session keeps running underneath, so
+ * entering and leaving never interrupts it.
+ */
+export function FocusSurface({ onLeave }: { onLeave: () => void }) {
+  const t = useTimer()
+
+  // The surface owns its own keys: space runs the session, escape leaves.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        onLeave()
+        return
+      }
+      if (e.key !== ' ' && e.code !== 'Space') return
+      const el = e.target as HTMLElement | null
+      if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) return
+      e.preventDefault()
+      // Read the singleton directly: this is an event, not a render.
+      const s = state
+      if (s.running) pause()
+      else if (s.sessionId) resume()
+      else start()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onLeave])
+  const task = useStore((s) => (t.taskId ? s.tasks[t.taskId] : undefined))
+  const toggleTask = useStore((s) => s.toggleTask)
+  const total = msFor(t.phase)
+  const left = remainingMs()
+  const p = total > 0 ? Math.max(0, Math.min(1, left / total)) : 0
+  const isFocus = t.phase === 'focus'
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Focus mode"
+      className="fixed inset-0 z-[130] flex flex-col items-center justify-center bg-bg px-6"
+    >
+      {/* clicking away leaves, but never steals a click meant for a control */}
+      <button
+        aria-label="Leave focus mode"
+        onClick={onLeave}
+        className="absolute inset-0 cursor-default"
+      />
+
+      <div className="relative flex flex-col items-center gap-7">
+        <div className="flex items-center gap-2 text-[10.5px] uppercase tracking-[0.18em] text-ink-4">
+          {isFocus ? <Timer size={12} /> : <Coffee size={12} />}
+          <span>{PHASE_LABEL[t.phase]}</span>
+          <span className="mono-clock tnum normal-case tracking-normal text-ink-4">
+            round {(t.rounds % LONG_EVERY) + 1}/{LONG_EVERY}
+          </span>
+        </div>
+
+        <DrainingRing remaining={left} total={total} running={t.running} tone="signal" size={288} stroke={9}>
+          <div className="text-center">
+            <div className="mono-clock tnum text-[58px] font-semibold leading-none tracking-tight text-ink">
+              {clock(left)}
+            </div>
+            <div className="mt-2 text-[10px] uppercase tracking-[0.16em] text-ink-4">
+              {t.running ? 'in flight' : t.sessionId ? 'paused' : 'ready'}
+            </div>
+          </div>
+        </DrainingRing>
+
+        <div className="max-w-[34rem] text-center">
+          <div className="truncate font-serif text-[22px] leading-tight tracking-tight text-ink">
+            {task ? task.title : 'Unattributed focus'}
+          </div>
+          <p className="mt-2 text-[12px] text-ink-4">
+            {isFocus
+              ? `Next up after this: ${minutesLabel(lengthFor(isFocus ? 'short' : 'focus'))} away from the keyboard.`
+              : `Then ${minutesLabel(lengthFor('focus'))} of focus.`}
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {t.running ? (
+            <Btn variant="primary" size="md" onClick={pause}>
+              <Pause size={14} />
+              Pause
+            </Btn>
+          ) : (
+            <Btn variant="primary" size="md" onClick={t.sessionId ? resume : start}>
+              <Play size={14} />
+              {t.sessionId ? 'Resume' : 'Start'}
+            </Btn>
+          )}
+          <Btn onClick={skip} aria-label="Skip to the next phase">
+            <SkipForward size={14} />
+            Skip
+          </Btn>
+          {task && !task.completed && (
+            <Btn
+              onClick={() => toggleTask(task.id)}
+              aria-label="Mark the linked task done"
+              className="border-good/40 text-good hover:bg-good/10"
+            >
+              <Check size={14} />
+              Done
+            </Btn>
+          )}
+        </div>
+
+        <p className="mono-clock text-[10px] text-ink-4">
+          <Kbd>esc</Kbd> to leave · <Kbd>space</Kbd> to {t.running ? 'pause' : 'start'} ·{' '}
+          {Math.round(p * 100)}% left
+        </p>
+      </div>
+    </div>
   )
 }
 
