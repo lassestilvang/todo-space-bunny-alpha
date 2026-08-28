@@ -5,12 +5,14 @@ import {
   ChevronLeft,
   Columns3,
   FileText,
+  Filter,
   Flame,
   Hash,
   Inbox,
   LayoutGrid,
   Moon,
   Plus,
+  Settings2,
   Sun,
   Target,
   Timer,
@@ -21,8 +23,10 @@ import type { ViewId } from '@/types'
 import { cn, smartList } from '@/lib/selectors'
 import { addDays, toKey } from '@/lib/date'
 import { riskReport } from '@/lib/risk'
+import { matchesFilter } from '@/lib/filters'
 import { Btn, IconBtn, MenuItem, Modal, Popover, usePopover } from './ui'
 import { PomodoroWidget } from './Pomodoro'
+import { FilterEditor } from './FilterEditor'
 
 type NavItem = {
   id: ViewId
@@ -79,6 +83,10 @@ export function Sidebar() {
   const setSettings = useStore((s) => s.setSettings)
   const addProject = useStore((s) => s.addProject)
   const [collapsed, setCollapsed] = useState(false)
+  const filters = useStore((s) => s.filters)
+  const activeFilter = useStore((s) => s.ui.filter)
+  const setFilter = useStore((s) => s.setFilter)
+  const [editFilter, setEditFilter] = useState<string | null | undefined>(undefined)
   const [newProject, setNewProject] = useState(false)
   const [projectName, setProjectName] = useState('')
   const [glyph, setGlyph] = useState('◆')
@@ -105,6 +113,18 @@ export function Sidebar() {
     [projects],
   )
   const labelList = useMemo(() => Object.values(labels), [labels])
+  const filterList = useMemo(
+    () => Object.values(filters).sort((a, b) => a.order - b.order),
+    [filters],
+  )
+  const filterCounts = useMemo(() => {
+    const out: Record<string, number> = {}
+    const now = Date.now()
+    for (const f of filterList) {
+      out[f.id] = Object.values(tasks).filter((t) => !t.completed && matchesFilter(t, f, now)).length
+    }
+    return out
+  }, [filterList, tasks])
 
   const countFor = (id: ViewId): number | null => {
     if (id === 'inbox') return counts.inbox
@@ -176,6 +196,35 @@ export function Sidebar() {
               onClick={() => setView(n.id)}
             />
           ))}
+        </Group>
+
+        <Group
+          title={collapsed ? '' : 'Filters'}
+          action={
+            !collapsed ? (
+              <IconBtn label="New filter" onClick={() => setEditFilter(null)}>
+                <Plus size={13} />
+              </IconBtn>
+            ) : undefined
+          }
+        >
+          {filterList.length === 0 && !collapsed ? (
+            <p className="px-2 pb-1 text-[10.5px] leading-snug text-ink-4">
+              Keep a question about your tasks and ask it again.
+            </p>
+          ) : (
+            filterList.map((f) => (
+              <NavRow
+                key={f.id}
+                item={{ id: 'filter', label: f.name, icon: Filter, group: 'lists' }}
+                collapsed={collapsed}
+                active={activeFilter === f.id && view === 'filter'}
+                count={filterCounts[f.id] ?? 0}
+                onClick={() => setFilter(activeFilter === f.id && view === 'filter' ? null : f.id)}
+                onEdit={collapsed ? undefined : () => setEditFilter(f.id)}
+              />
+            ))
+          )}
         </Group>
 
         <Group
@@ -285,6 +334,10 @@ export function Sidebar() {
         </IconBtn>
       </div>
 
+      {editFilter !== undefined && (
+        <FilterEditor filterId={editFilter} onClose={() => setEditFilter(undefined)} />
+      )}
+
       <Modal
         open={newProject}
         onClose={() => setNewProject(false)}
@@ -384,6 +437,7 @@ function NavRow({
   count,
   risky,
   onClick,
+  onEdit,
 }: {
   item: NavItem
   active: boolean
@@ -391,6 +445,7 @@ function NavRow({
   count?: number | null
   risky?: boolean
   onClick: () => void
+  onEdit?: () => void
 }) {
   const Icon = item.icon
   return (
@@ -407,6 +462,26 @@ function NavRow({
       {!collapsed && (
         <>
           <span className="min-w-0 flex-1 truncate">{item.label}</span>
+          {onEdit && (
+            <span
+              role="button"
+              tabIndex={0}
+              aria-label={`Edit ${item.label}`}
+              onClick={(e) => {
+                e.stopPropagation()
+                onEdit()
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.stopPropagation()
+                  onEdit()
+                }
+              }}
+              className="press shrink-0 rounded-[5px] p-[3px] text-ink-4 opacity-0 transition-opacity hover:bg-surface-3 hover:text-ink-2 focus-visible:opacity-100 group-hover:opacity-100"
+            >
+              <Settings2 size={11} />
+            </span>
+          )}
           {count !== null && count !== undefined && count > 0 && (
             <span
               className={cn(
