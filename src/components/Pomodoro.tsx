@@ -15,6 +15,7 @@ import type { ID } from '@/types'
 import { MIN, fmtTime } from '@/lib/date'
 import { cn, minutesLabel, sortTasks } from '@/lib/selectors'
 import { useStore } from '@/lib/store'
+import { playPhaseCue, unlockAudio } from '@/lib/sound'
 import { Btn, Chip, IconBtn, Input, Kbd, Modal, SectionTitle } from '@/components/ui'
 
 /* ================================================================
@@ -209,6 +210,7 @@ function complete() {
 
   const rounds = finished.phase === 'focus' ? finished.rounds + 1 : finished.rounds
   const phase = nextPhase(finished.phase, finished.rounds)
+  playPhaseCue(phase === 'focus' ? 'focus' : 'break', useStore.getState().settings.soundOn)
 
   set({
     phase,
@@ -241,6 +243,8 @@ function tick() {
 
 function start() {
   if (state.running) return
+  // The gesture that lets the browser start audio for later cues.
+  unlockAudio()
   const mins = lengthFor(state.phase)
   const label = state.label.trim() || PHASE_LABEL[state.phase]
   const sessionId = useStore
@@ -276,6 +280,8 @@ function skip() {
   stopTicker()
   if (state.sessionId) useStore.getState().dropSession(state.sessionId)
   const phase = nextPhase(state.phase, state.rounds)
+  // Skipping is a deliberate hand on the dial: no chime for it.
+  unlockAudio()
   set({
     phase,
     running: false,
