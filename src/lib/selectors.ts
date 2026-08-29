@@ -207,6 +207,24 @@ export function smartList(tasks: Task[], list: SmartList, projectId?: ID): Task[
 export const isOverdue = (t: Task): boolean =>
   !t.completed && !!t.due && !!isValidKey(t.due) && daysBetween(fromKey(t.due), new Date()) > 0
 
+/**
+ * How long a task should hold the clock.
+ *
+ * `durationMin` is the estimate for the whole job. When a task has steps, only
+ * the remaining ones need time: two of three done asks for a third of the
+ * estimate, and ticking the last one leaves the few minutes needed to close it
+ * out. One definition, so the grid, the planner and the lists agree.
+ */
+export const MIN_BLOCK_MIN = 5
+
+export function plannedMinutes(t: Task): number {
+  const steps = t.subtasks ?? []
+  if (!steps.length) return t.durationMin
+  const left = steps.filter((s) => !s.done).length
+  if (left === 0) return MIN_BLOCK_MIN
+  return Math.max(MIN_BLOCK_MIN, Math.round((t.durationMin * left) / steps.length))
+}
+
 /* ---------------------------------- habits ---------------------------------- */
 
 export function habitStreak(h: Habit, today = new Date()): number {
