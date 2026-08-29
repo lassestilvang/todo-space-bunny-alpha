@@ -87,6 +87,8 @@ text never silently moves the block.
   changing the time or deleting asks whether you meant this one, this and future, or the
   whole series.
 - **Habits** with daily/weekdays/weekly/custom cadence, anchors, streaks, and honest counts.
+- **Steps** are time-aware: a task with three steps asks the clock for a third of its
+  estimate while two are outstanding, and ticking one shortens its block on the spot.
 - **Focus timer** with rounds and long breaks, opened from the sidebar pill as a modal, or full-screen with `F`. Focus mode shows one ring, the task, and what comes next; `Space` runs the session and `Esc` leaves with the session still running. Timer state lives outside React, so no surface can interrupt a run. Finished focus blocks are logged as store records; break sessions never pollute the numbers.
 - **Assistant** works offline against a deterministic intent engine (add, schedule, unschedule, complete, delete, priority, plan). It opens as a modal. Supply an Anthropic or OpenAI key in Settings if you want model-written replies.
 - **Phase chime** (Settings → Focus, off by default). A short two-note tone when a
