@@ -17,6 +17,7 @@ import {
   Moon,
   NotebookPen,
   Repeat,
+  Repeat2,
   Sparkles,
   Sun,
   Sunrise,
@@ -26,8 +27,8 @@ import {
   Unlock,
   X,
 } from 'lucide-react'
-import { useStore } from '@/lib/store'
-import type { DayPart, Energy, Priority, Recurrence, Task } from '@/types'
+import { useStore, type SeriesScope } from '@/lib/store'
+import type { CalEvent, DayPart, Energy, Priority, Recurrence, Task } from '@/types'
 import {
   addDays,
   describeRecurrence,
@@ -38,6 +39,7 @@ import {
 } from '@/lib/date'
 import { cn, cssColor, minutesLabel } from '@/lib/selectors'
 import { Btn, Checkbox, IconBtn, Input, Modal, Seg } from './ui'
+import { seriesOf } from '@/lib/series'
 import { Markdown } from './Markdown'
 import { uid } from '@/lib/id'
 
@@ -606,12 +608,19 @@ function EventEditor({ id, onClose }: { id: string; onClose: () => void }) {
   const event = useStore((s) => s.events[id])
   const update = useStore((s) => s.updateEvent)
   const remove = useStore((s) => s.deleteEvent)
+  const reseries = useStore((s) => s.reseriesEvent)
   const projects = useStore((s) => s.projects)
   const setAnchor = useStore((s) => s.setAnchor)
   const setView = useStore((s) => s.setView)
 
+  const events = useStore((s) => s.events)
+  /** Set when an edit or a delete needs to know how far it should reach. */
+  const [pending, setPending] = useState<
+    null | { kind: 'delete' } | { kind: 'patch'; patch: Partial<CalEvent> }
+  >(null)
   if (!event) return null
   const timeValue = (t: number) => fmtTime(t)
+  const occurrences = event.seriesId ? seriesOf(events, id).length : 1
 
   return (
     <PanelShell onClose={onClose} label="Meeting" accent={cssColor(event.color)}>
@@ -641,7 +650,9 @@ function EventEditor({ id, onClose }: { id: string; onClose: () => void }) {
                 const [h, m] = e.target.value.split(':').map(Number)
                 const day = fromKey(toKey(event.start))
                 const start = new Date(day).setHours(h, m, 0, 0)
-                update(id, { start, end: start + (event.end - event.start) }, false)
+                const patch = { start, end: start + (event.end - event.start) }
+                if (event.seriesId) setPending({ kind: 'patch', patch })
+                else update(id, patch, false)
               }}
               className="mono-clock h-7 rounded-[6px] border border-line bg-surface-2 px-2 text-[11.5px] text-ink-2 outline-none"
             />
@@ -656,7 +667,9 @@ function EventEditor({ id, onClose }: { id: string; onClose: () => void }) {
               onChange={(e) => {
                 const [h, m] = e.target.value.split(':').map(Number)
                 const day = fromKey(toKey(event.start))
-                update(id, { end: new Date(day).setHours(h, m, 0, 0) }, false)
+                const patch = { end: new Date(day).setHours(h, m, 0, 0) }
+                if (event.seriesId) setPending({ kind: 'patch', patch })
+                else update(id, patch, false)
               }}
               className="mono-clock h-7 rounded-[6px] border border-line bg-surface-2 px-2 text-[11.5px] text-ink-2 outline-none"
             />
@@ -715,6 +728,37 @@ function EventEditor({ id, onClose }: { id: string; onClose: () => void }) {
           />
         </label>
 
+        <Field label="Repeats" icon={<Repeat2 size={12} />}>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <select
+              value={event.recurrence ? event.recurrence.freq + event.recurrence.interval : 'none'}
+              onChange={(e) => {
+                const v = e.target.value
+                if (v === 'none') {
+                  reseries(id, undefined)
+                  return
+                }
+                const freq = v.replace(/[0-9]+$/, '') as Recurrence['freq']
+                const interval = Number(v.replace(/[^0-9]/g, '')) || 1
+                reseries(id, { freq, interval })
+              }}
+              className="h-7 rounded-[6px] border border-line bg-surface-2 px-2 text-[11.5px] text-ink-2 outline-none"
+              aria-label="Repeats"
+            >
+              <option value="none">Does not repeat</option>
+              <option value="daily1">Daily</option>
+              <option value="weekly1">Weekly</option>
+              <option value="weekly2">Every 2 weeks</option>
+              <option value="monthly1">Monthly</option>
+            </select>
+            {event.recurrence && (
+              <span className="mono-clock text-[10.5px] text-ink-4">
+                {describeRecurrence(event.recurrence)} · {occurrences} booked
+              </span>
+            )}
+          </div>
+        </Field>
+
         <div>
           <div className="mb-1.5 flex items-center gap-1.5">
             <NotebookPen size={12} className="text-ink-4" />
@@ -744,14 +788,70 @@ function EventEditor({ id, onClose }: { id: string; onClose: () => void }) {
         <Btn
           variant="danger"
           onClick={() => {
-            remove(id)
-            onClose()
+            if (event.seriesId) setPending({ kind: 'delete' })
+            else {
+              remove(id)
+              onClose()
+            }
           }}
         >
-          <Trash2 size={12} /> Delete
+          <Trash2 size={12} /> Delete{event.seriesId ? ' series' : ''}
         </Btn>
       </div>
+
+      {pending && event.seriesId && (
+        <ScopePrompt
+          count={occurrences}
+          onPick={(scope) => {
+            if (pending.kind === 'delete') remove(id, scope)
+            else update(id, pending.patch, true, scope)
+            setPending(null)
+            onClose()
+          }}
+          onCancel={() => setPending(null)}
+        />
+      )}
     </PanelShell>
+  )
+}
+
+/**
+ * How far a change to one occurrence of a repeating meeting should reach.
+ * Asked only for the two changes where the answer is genuinely ambiguous:
+ * moving the time, and deleting.
+ */
+function ScopePrompt({
+  count,
+  onPick,
+  onCancel,
+}: {
+  count: number
+  onPick: (scope: SeriesScope) => void
+  onCancel: () => void
+}) {
+  const options: [SeriesScope, string, string][] = [
+    ['this', 'Only this meeting', 'the rest stay where they are'],
+    ['future', 'This and future', 'every meeting from here on'],
+    ['all', 'The whole series', `all ${count} meetings`],
+  ]
+  return (
+    <Modal open onClose={onCancel} width={420} title="Repeating meeting">
+      <div className="space-y-1.5 p-4 pt-0">
+        <p className="pb-1 text-[12px] text-ink-3">
+          This meeting is one of {count}. How far should this change reach?
+        </p>
+        {options.map(([scope, title, sub]) => (
+          <button
+            key={scope}
+            onClick={() => onPick(scope)}
+            className="press flex w-full items-center justify-between gap-3 rounded-[var(--radius-md)] border border-line bg-surface-2 px-3 py-2 text-left hover:bg-surface-3"
+          >
+            <span className="text-[12.5px] text-ink">{title}</span>
+            <span className="text-[10.5px] text-ink-4">{sub}</span>
+          </button>
+        ))}
+      </div>
+    </Modal>
   )
 }
 
