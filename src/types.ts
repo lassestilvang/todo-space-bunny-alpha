@@ -76,6 +76,9 @@ export type CalEvent = {
   color?: string
   /** Attendees / free-busy only blocks. */
   tentative: boolean
+  /** Set on the seed of a repeating meeting; shared by every occurrence. */
+  seriesId?: ID
+  recurrence?: Recurrence
 }
 
 export type HabitCadence = 'daily' | 'weekdays' | 'weekly' | 'custom'
