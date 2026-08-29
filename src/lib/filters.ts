@@ -1,5 +1,6 @@
 import type { FilterClause, Task, TaskFilter } from '@/types'
 import { MIN, addDays, fromKey, startOfDay, toKey } from './date'
+import { plannedMinutes } from './selectors'
 
 /**
  * Saved filters.
@@ -82,7 +83,7 @@ export function describeClause(
   }
 }
 
-/** Total minutes of work the filter's answers add up to. */
+/** Total minutes of clock the filter's answers will ask for. */
 export function filterMinutes(tasks: Task[], filter: TaskFilter, now: number): number {
-  return filterTasks(tasks, filter, now).reduce((a, t) => a + (t.durationMin || 0) * MIN, 0)
+  return filterTasks(tasks, filter, now).reduce((a, t) => a + plannedMinutes(t) * MIN, 0)
 }
