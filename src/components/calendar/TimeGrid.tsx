@@ -17,6 +17,7 @@ import { riskForItem, riskTitle } from '@/lib/risk'
 import { metaFrom, nameMaps, type ResolvedMeta } from '@/lib/capture'
 import { parseInput } from '@/lib/nlp'
 import { ParsedChips } from '@/components/ParsedChips'
+import { useStore } from '@/lib/store'
 
 export const GUTTER = 56
 export const MIN_BLOCK = 10
