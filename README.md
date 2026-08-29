@@ -64,6 +64,10 @@ Settings → **Keep the plan true** turns the whole mechanism off, leaving the p
 | Drag an all-day event onto the grid | Turns it into a timed block |
 | Click an empty slot | Opens a title field there, defaulting to 30 minutes |
 | Drag out a range | Opens the same field on the range you drew, with its length |
+
+That field reads `#project`, `@label`, `!1`–`!4`, energy and recurrence as you type, with
+the same chips the capture bar shows. The range you drew stays the clock — a time in the
+text never silently moves the block.
 | Arrow keys on a focused block | Nudge by one step; `Shift` + arrows change length |
 | Right-click a block | Move off the calendar, start a focus block, duplicate, delete |
 
