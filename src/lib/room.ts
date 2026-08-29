@@ -91,6 +91,44 @@ function blocksOn(tasks: Task[], key: string) {
 
 const overlaps = (iv: Interval, from: number, to: number) => iv.start < to && iv.end > from
 
+/** Minutes from local midnight for a timestamp. */
+const clockOf = (t: number): number => {
+  const d = new Date(t)
+  return d.getHours() * 60 + d.getMinutes()
+}
+
+/**
+ * What is standing in the window that we are not allowed to move: meetings,
+ * habit anchors and blocks the user placed by hand. Naming these is the
+ * difference between "nothing is in the way" and an honest answer.
+ */
+function immovableIn(
+  window: Interval,
+  tasks: Task[],
+  events: CalEvent[],
+  habits: Habit[],
+): string[] {
+  const out: string[] = []
+  for (const e of events) {
+    if (e.allDay) continue
+    const s = clockOf(e.start)
+    const en = clockOf(e.end)
+    if (overlaps({ start: s, end: en }, window.start, window.end)) out.push(e.title)
+  }
+  for (const h of habits) {
+    if (h.anchorMin === null) continue
+    if (overlaps({ start: h.anchorMin, end: h.anchorMin + h.durationMin }, window.start, window.end))
+      out.push(h.name)
+  }
+  for (const t of tasks) {
+    if (!t.scheduled || !t.planLocked || t.completed) continue
+    const s = clockOf(t.scheduled.start)
+    const en = clockOf(t.scheduled.end)
+    if (overlaps({ start: s, end: en }, window.start, window.end)) out.push(t.title)
+  }
+  return out
+}
+
 /**
  * Propose ways to free `need` minutes starting at `from` on the day of `now`.
  *
@@ -138,6 +176,10 @@ export function proposeRoom(
     gaps.length > 0 ? gaps.reduce((a, b) => (b.end - b.start > a.end - a.start ? b : a)) : null
 
   if (!inTheWay.length) {
+    const standing = immovableIn(window, tasks, events, habits)
+    const alternative = biggestGap
+      ? ` The nearest opening is ${clockLabel(biggestGap.start)}–${clockLabel(biggestGap.end)}, ${Math.round(biggestGap.end - biggestGap.start)} minutes.`
+      : ' There is no opening left in your working day either.'
     return {
       need,
       from,
@@ -146,9 +188,10 @@ export function proposeRoom(
       proposals: [],
       biggestGap,
       notes: [
-        biggestGap
-          ? `Nothing is in the way. The largest opening left today is ${clockLabel(biggestGap.start)}–${clockLabel(biggestGap.end)} — ${Math.round(biggestGap.end - biggestGap.start)} minutes.`
-          : 'Nothing is in the way, but today has no opening left either.',
+        standing.length
+          ? // Honest: the hour is taken, but by something I am not allowed to move.
+            `${clockLabel(window.start)}–${clockLabel(window.end)} is ${listNames(standing)}, which I cannot move.${alternative}`
+          : `Nothing is in the way. The largest opening left today is ${clockLabel(biggestGap!.start)}–${clockLabel(biggestGap!.end)} — ${Math.round(biggestGap!.end - biggestGap!.start)} minutes.`,
       ],
     }
   }
@@ -216,6 +259,12 @@ export function proposeRoom(
 function isWorkday(s: Settings, day: Date): boolean {
   return s.workDays.includes(day.getDay())
 }
+
+/** "a", "a and b", "a, b and c" — so a reply reads as a sentence. */
+export const listNames = (names: string[]): string =>
+  names.length <= 1
+    ? names[0]
+    : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
 
 const clockLabel = (minutes: number): string => {
   const m = ((Math.round(minutes) % DAY_MIN) + DAY_MIN) % DAY_MIN
