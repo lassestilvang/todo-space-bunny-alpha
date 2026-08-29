@@ -30,6 +30,7 @@ import {
 } from './date'
 import { blockConflicts, planRange } from './planner'
 import { SERIES_HORIZON, durationOf, occurrenceStarts, seriesFrom, seriesOf } from './series'
+import { plannedMinutes } from './selectors'
 import { DEFAULT_SETTINGS, seedState } from './seed'
 
 type Entities = {
@@ -269,6 +270,13 @@ export const useStore = create<State & Actions>()(
           const existing = s.tasks[id]
           if (!existing) return {}
           const next = { ...existing, ...patch, updatedAt: Date.now() }
+          // Ticking a step shortens the block that stands for the task: the
+          // clock was holding time for work that is now done.
+          if (patch.subtasks && next.scheduled) {
+            const want = plannedMinutes(next) * MIN
+            next.scheduled = { start: next.scheduled.start, end: next.scheduled.start + want }
+            next.durationMin = existing.durationMin
+          }
           const tasks = { ...s.tasks, [id]: next }
           return history ? { tasks, history: pushHistory(s) } : { tasks }
         }),
