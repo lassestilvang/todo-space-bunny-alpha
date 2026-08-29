@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { CalEvent, Settings, Task } from '@/types'
-import { parseRoomRequest, proposeRoom, roomReply } from './room'
+import { listNames, parseRoomRequest, proposeRoom, roomReply } from './room'
 
 const DAY = '2026-10-01'
 const at = (h: number, m = 0) => {
@@ -167,6 +167,30 @@ describe('when something is in the way', () => {
 })
 
 describe('what it will not touch', () => {
+  it('names what it cannot move instead of claiming the window is free', () => {
+    // A meeting in the requested hour: the assistant cannot shift a meeting, and
+    // saying "nothing is in the way" would be a lie.
+    const r = proposeRoom(
+      [task({ scheduled: { start: at(10), end: at(11) } })],
+      [meeting({ title: 'Design review', start: at(14), end: at(15) })],
+      [],
+      settings,
+      NOW,
+      'free up 30 minutes at 14:00',
+    )
+    expect(r.proposals).toHaveLength(0)
+    expect(r.notes.join(' ')).toMatch(/Design review/)
+    expect(r.notes.join(' ')).toMatch(/cannot move/)
+    // And it still offers the nearest alternative.
+    expect(r.notes.join(' ')).toMatch(/nearest opening is/)
+  })
+
+  it('lists immovable things readably', () => {
+    expect(listNames(['a'])).toBe('a')
+    expect(listNames(['a', 'b'])).toBe('a and b')
+    expect(listNames(['a', 'b', 'c'])).toBe('a, b and c')
+  })
+
   it('leaves a hand-placed block alone, even in the window', () => {
     const hand = task({ title: 'Mine', planLocked: true, scheduled: { start: at(14), end: at(15) } })
     const report = proposeRoom([hand], [], [], settings, NOW, 'free up 30 minutes at 14:00')
