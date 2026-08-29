@@ -14,6 +14,14 @@ more truthful, more drivable, or more honest about time is out of scope.
 
 ## Now
 
+**Recurring events** — `done`. A meeting can repeat. Occurrences are stored as real rows
+that share a `seriesId`, which is what the grid, the planner and the busy calculation
+already understand, so moving or cancelling one occurrence is an ordinary edit to that row
+and the rest of the series cannot be affected by accident. Changing the time or deleting
+asks how far the change should reach: only this meeting, this and future, or the whole
+series. A time change applied to the series shifts every occurrence by the same delta, so
+a 09:00 standup stays a 09:00 standup.
+
 **The drawn block takes a project** — `done`. The inline field on the calendar runs the
 same parser as the capture bar, so drawing a block and typing `plan the week #Studio
 @errand !2` gives you the project, the label and the priority, with the same live chips
@@ -65,18 +73,7 @@ never move, and nothing new gets scheduled. See README → *Keeping the plan tru
 
 ## Next up
 
-### 1. Recurring events — M
-
-`recurrence` exists on `Task` only, so a standup cannot repeat. This is a
-correctness gap rather than a missing feature.
-
-- Series editing with a this/this-and-future/all choice, matching task behaviour.
-- Exceptions on single occurrences, and a way to delete one without the series.
-
-**Done when** a weekly meeting repeats, a single instance can be moved or cancelled,
-and the series is left alone.
-
-### 2. Subtasks count when planning — M
+### 1. Subtasks count when planning — M
 
 A task with three unfinished subtasks is planned as one block of its own duration.
 The planner should either lengthen the block or schedule the subtasks.
@@ -84,7 +81,7 @@ The planner should either lengthen the block or schedule the subtasks.
 **Done when** an incomplete subtask list changes the planned length, and completing
 subtasks is reflected in the block that represents the task.
 
-### 3. A 24-hour time field — S
+### 2. A 24-hour time field — S
 
 Four native `<input type="time">` widgets (event start and end, habit anchor, and
 working hours) render in the browser's locale format. Their values are 24-hour, but
@@ -98,7 +95,7 @@ the widget is not, which is inconsistent with the rest of the app.
 
 ## Bigger, later
 
-### 4. "Free up an hour" — L
+### 3. "Free up an hour" — L
 
 From Ellie. The assistant is seven intents deep: add, schedule, unschedule,
 complete, delete, priority, plan. It can execute but cannot negotiate.
@@ -112,7 +109,7 @@ complete, delete, priority, plan. It can execute but cannot negotiate.
 **Done when** a vague request returns options with previews, and applying one is a
 single undoable step that shows exactly what moved.
 
-### 5. Folders — M
+### 4. Folders — M
 
 From Todoist sections and TickTick lists. Projects are flat.
 
@@ -129,7 +126,7 @@ can span a folder.
 
 Not features — things that are wrong or missing and should not be forgotten.
 
-- Four native time inputs follow browser locale, not 24-hour (item 3).
+- Four native time inputs follow browser locale, not 24-hour (item 2).
 - No unit tests. `scripts/verify.mjs` covers rendering and console cleanliness only
   (fifteen surfaces now, including Focus).
   The planner and the NLP parser are pure functions and are the first things worth
@@ -138,6 +135,11 @@ Not features — things that are wrong or missing and should not be forgotten.
   The brief also mentioned driving "the capture bar's default view"; that clause is not
   implemented, because nothing in the capture flow wanted a saved filter and inventing one
   would have meant guessing.
+- A repeating meeting is issued as 26 real occurrences and is not extended past that, so
+  a weekly series runs about six months. Re-issuing it is one edit in the event panel.
+- Editing an occurrence's *title* or notes applies to that occurrence only, even inside a
+  series; only time and deletion offer the wider scopes. This is deliberate but it does
+  mean a renamed occurrence quietly diverges from its siblings.
 - A `planLocked` block can sit underneath a meeting, because the user is allowed to
   put it there. This is deliberate, and deadline risk surfacing now makes the
   schedule itself honest, but the overlap is still only visible on the block.
