@@ -152,7 +152,8 @@ export function seedState() {
     projectId: deepWork,
     priority: 1,
     due: key(0),
-    scheduled: block(d(0), 9 * 60, 90),
+    // Two of three steps are done, so the block holds the remaining hour.
+    scheduled: block(d(0), 9 * 60, 60),
     durationMin: 90,
     energy: 'deep',
     dayPart: 'morning',
