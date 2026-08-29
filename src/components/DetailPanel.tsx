@@ -40,6 +40,7 @@ import {
 import { cn, cssColor, minutesLabel } from '@/lib/selectors'
 import { Btn, Checkbox, IconBtn, Input, Modal, Seg } from './ui'
 import { seriesOf } from '@/lib/series'
+import { plannedMinutes } from '@/lib/selectors'
 import { Markdown } from './Markdown'
 import { uid } from '@/lib/id'
 
@@ -390,7 +391,8 @@ function TaskEditor({ id, onClose }: { id: string; onClose: () => void }) {
             </span>
             {task.subtasks.length > 0 && (
               <span className="mono-clock ml-auto text-[10px] text-ink-4">
-                {doneSubs}/{task.subtasks.length}
+                {doneSubs}/{task.subtasks.length} · {plannedMinutes(task)}m left of{' '}
+                {task.durationMin}m
               </span>
             )}
           </div>
