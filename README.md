@@ -82,6 +82,10 @@ text never silently moves the block.
 - **Quick capture** parses `#project`, `@label`, `!1`–`!4`, `tomorrow`, `at 9:30`, `for 45m`, `every tue`, and shows a live reading of what it understood. Typed times may be 12- or 24-hour; everything Tempo renders is 24-hour.
 - **Views**: day, week, month, agenda (7/14/21 days), inbox/today/upcoming lists, saved
   filters, focus, Eisenhower matrix, project board, habits, notes, review.
+- **Repeating meetings** — set a repeat rule in the event panel and the occurrences are
+  issued as real entries on the calendar. Moving or cancelling one leaves the rest alone;
+  changing the time or deleting asks whether you meant this one, this and future, or the
+  whole series.
 - **Habits** with daily/weekdays/weekly/custom cadence, anchors, streaks, and honest counts.
 - **Focus timer** with rounds and long breaks, opened from the sidebar pill as a modal, or full-screen with `F`. Focus mode shows one ring, the task, and what comes next; `Space` runs the session and `Esc` leaves with the session still running. Timer state lives outside React, so no surface can interrupt a run. Finished focus blocks are logged as store records; break sessions never pollute the numbers.
 - **Assistant** works offline against a deterministic intent engine (add, schedule, unschedule, complete, delete, priority, plan). It opens as a modal. Supply an Anthropic or OpenAI key in Settings if you want model-written replies.
