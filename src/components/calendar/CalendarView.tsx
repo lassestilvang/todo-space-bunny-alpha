@@ -19,6 +19,7 @@ import {
 } from '@/lib/date'
 import { layoutItems, toItems, tasksOnDay } from '@/lib/selectors'
 import type { DropPayload } from '@/lib/drag'
+import type { ResolvedMeta } from '@/lib/capture'
 import { clearItemPayload, setItemPayload } from '@/lib/drag'
 
 export function CalendarView({
@@ -39,6 +40,7 @@ export function CalendarView({
   const updateTask = useStore((s) => s.updateTask)
   const updateEvent = useStore((s) => s.updateEvent)
   const addTask = useStore((s) => s.addTask)
+  const addProject = useStore((s) => s.addProject)
   const setPanel = useStore((s) => s.setPanel)
   const panel = useStore((s) => s.ui.panel)
   const deleteEvent = useStore((s) => s.deleteEvent)
@@ -107,21 +109,30 @@ export function CalendarView({
   )
 
   const create = useCallback(
-    (day: Date, start: number, end: number, title: string) => {
+    (day: Date, start: number, end: number, meta: ResolvedMeta) => {
       const s = atMinutes(day, start)
       const e = atMinutes(day, end)
-      const id = addTask({
-        title,
+      // A project named in the text that does not exist yet gets created, the
+      // same as typing it into the capture bar.
+      const projectId = meta.newProjectName
+        ? addProject({ name: meta.newProjectName })
+        : meta.projectId
+      addTask({
+        title: meta.title,
+        projectId,
+        labelIds: meta.labelIds,
+        priority: meta.priority,
+        dayPart: meta.dayPart,
+        recurrence: meta.recurrence,
         due: toKey(day),
         dueHasTime: true,
         scheduled: { start: s, end: e },
         durationMin: end - start,
         planLocked: true,
       })
-      setPanel({ kind: 'task', id })
       toast({ text: `Placed at ${fmtTime(s)}`, kind: 'ok' })
     },
-    [addTask, setPanel, toast],
+    [addTask, addProject, toast],
   )
 
   const dropItem = useCallback(
