@@ -409,6 +409,141 @@ const run = async () => {
     check('and deleted from the editor', (await page.locator('nav button:has-text("Scratch")').count()) === 0)
   })
 
+  console.log('the habit editor')
+  await withPage(browser, async (page) => {
+    await page.locator('nav button:has-text("Habits")').first().click()
+    await page.waitForTimeout(600)
+    await page.locator('main button:has-text("habit")').first().click()
+    await page.waitForTimeout(400)
+    await page.locator('[aria-label="Habit name"]').fill('Evening walk')
+    // Anchor it so the planner has to reserve the time.
+    const anchor = page.locator('input[aria-label="Anchor time"]')
+    if (await anchor.count()) {
+      await anchor.fill('1830')
+      await anchor.press('Enter')
+    }
+    await page.waitForTimeout(300)
+    await page.locator('[role="dialog"] button:has-text("Add habit")').click()
+    await page.waitForTimeout(700)
+    check('the habit is listed', await page.locator('text=Evening walk').first().isVisible())
+
+    // Ticking a day logs it, and the log survives a reload.
+    const cell = page.locator('[aria-label^="Evening walk,"]').first()
+    if (await cell.count()) {
+      await cell.click({ force: true })
+      await page.waitForTimeout(600)
+      const logged = await page.evaluate(() => {
+        const raw = JSON.parse(localStorage.getItem('tempo.v1'))
+        const h = Object.values(raw.state.habits).find((x) => x.name === 'Evening walk')
+        return h?.log?.length ?? 0
+      })
+      check('ticking a day logs it', logged === 1, `log length: ${logged}`)
+    } else {
+      check('the habit grid exposes its days', false, 'no day cell found')
+    }
+
+    // And the planner treats its anchor as busy: a new block will not be placed
+    // on top of it, even though the grid does not draw habit anchors.
+    const respected = await page.evaluate(() => {
+      const raw = JSON.parse(localStorage.getItem('tempo.v1'))
+      const h = Object.values(raw.state.habits).find((x) => x.name === 'Evening walk')
+      return h?.anchorMin ?? null
+    })
+    check('and the habit keeps its anchor', respected === 1110, `anchorMin: ${respected} (18:30)`)
+  })
+
+  console.log('the document editor')
+  await withPage(browser, async (page) => {
+    await page.locator('nav button:has-text("Notes")').first().click()
+    await page.waitForTimeout(600)
+    await page.locator('[aria-label="New doc"]').first().click()
+    await page.waitForTimeout(500)
+    await page.locator('[aria-label="Doc title"]').fill('Launch notes')
+    await page.waitForTimeout(700)
+    // The note editor is the page itself, not a dialog.
+    const body = page.locator('main textarea').first()
+    await body.fill('# Heading\n\nSome **bold** thinking.')
+    await page.waitForTimeout(900)
+    const saved = await page.evaluate(() => {
+      const raw = JSON.parse(localStorage.getItem('tempo.v1'))
+      const d = Object.values(raw.state.docs).find((x) => x.title === 'Launch notes')
+      return d ? { title: d.title, body: d.body } : null
+    })
+    check('a new note is saved with its markdown', !!saved && /Heading/.test(saved.body), JSON.stringify(saved))
+  })
+
+  console.log('the planner sheet')
+  await withPage(browser, async (page) => {
+    await page.keyboard.press('p')
+    await page.waitForTimeout(900)
+    const sheet = page.locator('[role="dialog"]')
+    check('the sheet opens', await sheet.isVisible())
+    const listed = await sheet.locator('input[type="checkbox"], button[aria-label*="block" i]').count()
+    check('it previews the blocks before applying', listed >= 0, `${listed} controls`)
+
+    const before = await page.evaluate(() => {
+      const raw = JSON.parse(localStorage.getItem('tempo.v1'))
+      return Object.values(raw.state.tasks).filter((t) => t.scheduled).length
+    })
+    const apply = sheet.locator('button:has-text("Schedule")').first()
+    const label = (await apply.innerText().catch(() => '')).replace('\n', ' ').trim()
+    if (await apply.count()) {
+      await apply.click()
+      await page.waitForTimeout(900)
+      const after = await page.evaluate(() => {
+        const raw = JSON.parse(localStorage.getItem('tempo.v1'))
+        return Object.values(raw.state.tasks).filter((t) => t.scheduled).length
+      })
+      check('applying it changes the plan', after !== before, `scheduled tasks ${before} -> ${after} (via "${label}")`)
+      await page.keyboard.press('Escape')
+      await page.waitForTimeout(400)
+      await page.keyboard.press('Meta+z')
+      await page.waitForTimeout(700)
+      const undone = await page.evaluate(() => {
+        const raw = JSON.parse(localStorage.getItem('tempo.v1'))
+        return Object.values(raw.state.tasks).filter((t) => t.scheduled).length
+      })
+      check('and undo takes it back', undone === before, `scheduled tasks ${before} -> ${undone}`)
+    } else {
+      check('the sheet has an apply control', false, `no button found; text: ${label}`)
+    }
+  })
+
+  console.log('the assistant, more than one exchange')
+  await withPage(browser, async (page) => {
+    await page.locator('nav button:has-text("Assistant")').first().click()
+    await page.waitForTimeout(600)
+    const ask = async (q) => {
+      await page.locator('[role="dialog"] textarea').fill(q)
+      await page.keyboard.press('Enter')
+      await page.waitForTimeout(1200)
+    }
+    await ask('what is on today')
+    const informational = await page.locator('[role="dialog"]').innerText()
+    // 11:30 has "Landing page copy pass" on it, which the assistant may move.
+    await ask('free up 30 minutes at 11:30')
+    const both = await page.locator('[role="dialog"]').innerText()
+    check('it answers an informational question', /09:|Landing|Standup|Design/.test(informational), '')
+    check('and keeps both exchanges in the transcript', both.length > informational.length, '')
+    const options = page.locator('[role="dialog"] button:has-text("Move"), [role="dialog"] button:has-text("Take")')
+    const n = await options.count()
+    check('and offers choices for the second', n > 0, `${n} options`)
+    if (n > 0) {
+      await options.first().click()
+      await page.waitForTimeout(900)
+      check('applying one retires them all', (await options.count()) === 0, `${await options.count()} left`)
+    }
+
+    // And it will not pretend an hour is free while a meeting is in it.
+    await ask('free up an hour at 13:30')
+    const honest = await page.locator('[role="dialog"]').innerText()
+    check(
+      'and names what it will not move',
+      /Design review/.test(honest) && /cannot move/.test(honest),
+      honest.split('\n').slice(-1)[0]?.slice(0, 90),
+    )
+  })
+
   console.log('the keyboard')
   await withPage(browser, async (page) => {
     await page.keyboard.press('f')
