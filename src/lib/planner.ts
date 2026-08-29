@@ -1,4 +1,5 @@
 import type { CalEvent, Habit, Settings, Task, TimeRange } from '@/types'
+import { plannedMinutes } from './selectors'
 import { addDays, atMinutes, DAY, fromKey, minOfDay, toKey } from './date'
 
 /**
@@ -232,7 +233,7 @@ export function planRange(
 
   const candidates = input.tasks
     .filter((t) => !t.completed && !blocked.has(t.id))
-    .filter((t) => t.durationMin > 0)
+    .filter((t) => plannedMinutes(t) > 0)
     .filter((t) => opts.replan || !t.planLocked)
     .filter((t) => opts.replan || opts.refit || !t.scheduled)
     // A refit only re-fits work that already had a block inside the window.
@@ -283,7 +284,7 @@ export function planRange(
       if (placements.some((p) => p.taskId === task.id)) continue
       if (task.due && task.due > key) continue // due later — do not pull it forward
 
-      let remaining = task.durationMin
+      let remaining = plannedMinutes(task)
       const chunks: Placement[] = []
       const ideal = idealStart(task, s)
 
@@ -306,7 +307,7 @@ export function planRange(
       }
 
       if (chunks.length) {
-        const count = Math.ceil(task.durationMin / s.maxBlockMin)
+        const count = Math.ceil(plannedMinutes(task) / s.maxBlockMin)
         chunks.forEach((c, i) => {
           c.chunkOf = i + 1
           c.chunkCount = count
