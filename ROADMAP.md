@@ -14,6 +14,16 @@ more truthful, more drivable, or more honest about time is out of scope.
 
 ## Now
 
+**The habit, note, planner and assistant surfaces** — `done`. Interaction coverage for the
+last four untested surfaces, and one honesty fix they forced. Asked to "free up an hour at
+14:00" while a meeting sat in that hour, the assistant replied "nothing is in the way" —
+technically true, since it will not move a meeting, and misleading all the same. It now names
+what is standing there and offers the nearest opening instead: "13:30–14:30 is Design review,
+which I cannot move. The nearest opening is 14:30–16:00, 90 minutes." Also covered: a habit's
+anchor is kept and its day-ticks log; a new note saves with its markdown; the planner sheet
+previews before it applies and one undo reverses the lot; the assistant keeps a multi-turn
+transcript and retires its proposals once one is chosen.
+
 **The panels, and keyboard access to them** — `done`. Interaction tests for the detail
 panel (rename, priority, steps, delete, Enter and Escape, arrow-key nudging) and for the
 filter editor (a live count that changes as conditions change, create, delete). They
@@ -156,10 +166,11 @@ never move, and nothing new gets scheduled. See README → *Keeping the plan tru
 
 Not features — things that are wrong or missing and should not be forgotten.
 
-- 143 unit tests (`npm test`) and 32 interaction checks (`npm run verify:actions`) cover
-  the logic, the grid, the detail panel, the filter editor, undo and the shortcuts in a
-  real browser. Still uncovered: the habit and document editors, the planner sheet's
-  preview, and the assistant beyond one "free up an hour" exchange.
+- 145 unit tests (`npm test`) and 45 interaction checks (`npm run verify:actions`) cover
+  every surface in the app: the grid, the detail panel, the filter editor, the habit and
+  note editors, the planner sheet, the assistant and the shortcuts, in a real browser. What
+  is still uncovered is anything that only breaks on a second machine: a narrow window, a
+  timezone other than the one it was written in, or a very large workspace.
 - The assistant negotiates about *today* only. "Free up an hour tomorrow morning" is read
   as today, which is the wrong answer rather than a refusal — worth a day parameter before
   anyone relies on it.
@@ -178,6 +189,10 @@ Not features — things that are wrong or missing and should not be forgotten.
 - Folders are one level and carry no colour, order beyond their own row, or nested
   projects-of-projects. That was the point of stopping at one, but it does mean the
   sidebar cannot express "Studio / Deep Work" as a path.
+- **Habit anchors are reserved on the clock but not drawn on it.** The planner will not
+  place work over your 06:45 pages or 07:00 training, and the rail lists them, but the
+  grid shows an unexplained gap. Drawing them as soft blocks would make the calendar
+  tell the whole truth.
 - The sample workspace keeps one deliberate collision: the tutorial block sits under
   the Standup, because it is a hand-placed block and hand-placed blocks are never moved.
   That is the behaviour being demonstrated, but it does look like a mistake on first run.
