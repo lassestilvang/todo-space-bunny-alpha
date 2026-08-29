@@ -16,6 +16,7 @@ import { addDays, fmtRelativeDay, fmtTime, fromKey, toKey } from '@/lib/date'
 import { planRange, toBlocks } from '@/lib/planner'
 import { riskFor, riskTitle } from '@/lib/risk'
 import { describeClause, filterTasks } from '@/lib/filters'
+import { plannedMinutes } from '@/lib/selectors'
 import { cn, cssColor, isOverdue, sortTasks } from '@/lib/selectors'
 import { Btn, Checkbox, Empty, IconBtn, Kbd, Seg } from '../ui'
 
@@ -117,7 +118,8 @@ export function ListView({ view, onPlan }: { view: ViewId; onPlan: () => void })
     return [...g.entries()]
   }, [filtered, today])
 
-  const totalMin = filtered.reduce((a, t) => a + t.durationMin, 0)
+  // What the calendar will actually be asked for, steps included.
+  const totalMin = filtered.reduce((a, t) => a + plannedMinutes(t), 0)
   const unplacedToday = list.filter((t) => !t.scheduled && (t.due === today || isOverdue(t)))
 
   const placeAll = () => {
