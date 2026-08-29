@@ -14,6 +14,14 @@ more truthful, more drivable, or more honest about time is out of scope.
 
 ## Now
 
+**The drawn block takes a project** — `done`. The inline field on the calendar runs the
+same parser as the capture bar, so drawing a block and typing `plan the week #Studio
+@errand !2` gives you the project, the label and the priority, with the same live chips
+underneath. A project you named that does not exist yet is created, exactly as typed
+capture would. The drawn range stays the clock: your word about the hour never silently
+overrides where you put the block. Both surfaces now share `chipList` and `metaFrom` in
+`src/lib/capture.ts`, so they cannot describe the same text differently.
+
 **Saved filters** — `done`. A named question about your tasks, kept so you can ask it
 again. Conditions cover project, label, priority, due window, on-the-clock-or-not and
 energy, combined with *and*; the editor shows a live count of what answers it as you
@@ -57,16 +65,7 @@ never move, and nothing new gets scheduled. See README → *Keeping the plan tru
 
 ## Next up
 
-### 1. The drawn block takes a project — S
-
-A consequence of routing grid creation through the inline field: it commits the raw
-title, so a block drawn on the calendar cannot pick up `#project`, `@label` or `!1`
-the way typed capture does. The composer should run its text through the same parser.
-
-**Done when** drawing a block and typing `plan the week #Studio !1` yields the project,
-label and priority, with the same live chips the capture bar shows.
-
-### 2. Recurring events — M
+### 1. Recurring events — M
 
 `recurrence` exists on `Task` only, so a standup cannot repeat. This is a
 correctness gap rather than a missing feature.
@@ -77,7 +76,7 @@ correctness gap rather than a missing feature.
 **Done when** a weekly meeting repeats, a single instance can be moved or cancelled,
 and the series is left alone.
 
-### 3. Subtasks count when planning — M
+### 2. Subtasks count when planning — M
 
 A task with three unfinished subtasks is planned as one block of its own duration.
 The planner should either lengthen the block or schedule the subtasks.
@@ -85,7 +84,7 @@ The planner should either lengthen the block or schedule the subtasks.
 **Done when** an incomplete subtask list changes the planned length, and completing
 subtasks is reflected in the block that represents the task.
 
-### 4. A 24-hour time field — S
+### 3. A 24-hour time field — S
 
 Four native `<input type="time">` widgets (event start and end, habit anchor, and
 working hours) render in the browser's locale format. Their values are 24-hour, but
@@ -99,7 +98,7 @@ the widget is not, which is inconsistent with the rest of the app.
 
 ## Bigger, later
 
-### 5. "Free up an hour" — L
+### 4. "Free up an hour" — L
 
 From Ellie. The assistant is seven intents deep: add, schedule, unschedule,
 complete, delete, priority, plan. It can execute but cannot negotiate.
@@ -113,7 +112,7 @@ complete, delete, priority, plan. It can execute but cannot negotiate.
 **Done when** a vague request returns options with previews, and applying one is a
 single undoable step that shows exactly what moved.
 
-### 6. Folders — M
+### 5. Folders — M
 
 From Todoist sections and TickTick lists. Projects are flat.
 
@@ -130,8 +129,7 @@ can span a folder.
 
 Not features — things that are wrong or missing and should not be forgotten.
 
-- The inline grid field does not parse `#project` / `@label` / `!1` (see item 1).
-- Four native time inputs follow browser locale, not 24-hour (item 4).
+- Four native time inputs follow browser locale, not 24-hour (item 3).
 - No unit tests. `scripts/verify.mjs` covers rendering and console cleanliness only
   (fifteen surfaces now, including Focus).
   The planner and the NLP parser are pure functions and are the first things worth
