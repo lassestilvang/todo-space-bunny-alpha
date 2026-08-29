@@ -14,6 +14,14 @@ more truthful, more drivable, or more honest about time is out of scope.
 
 ## Now
 
+**Subtasks count when planning** — `done`. A task's `durationMin` is the estimate for the
+whole job, so a task with steps only needs clock time for the steps that are left: one
+definition, `plannedMinutes`, in `src/lib/selectors.ts`, shared by the planner, the grid,
+the saved-filter totals and the list headers. Ticking a step shortens the block in place —
+the clock was holding time for work that is now done — and the panel says so plainly:
+"2/3 · 30m left of 90m". With every step done the block keeps the five minutes needed to
+close the job out rather than vanishing.
+
 **Recurring events** — `done`. A meeting can repeat. Occurrences are stored as real rows
 that share a `seriesId`, which is what the grid, the planner and the busy calculation
 already understand, so moving or cancelling one occurrence is an ordinary edit to that row
@@ -73,15 +81,7 @@ never move, and nothing new gets scheduled. See README → *Keeping the plan tru
 
 ## Next up
 
-### 1. Subtasks count when planning — M
-
-A task with three unfinished subtasks is planned as one block of its own duration.
-The planner should either lengthen the block or schedule the subtasks.
-
-**Done when** an incomplete subtask list changes the planned length, and completing
-subtasks is reflected in the block that represents the task.
-
-### 2. A 24-hour time field — S
+### 1. A 24-hour time field — S
 
 Four native `<input type="time">` widgets (event start and end, habit anchor, and
 working hours) render in the browser's locale format. Their values are 24-hour, but
@@ -95,7 +95,7 @@ the widget is not, which is inconsistent with the rest of the app.
 
 ## Bigger, later
 
-### 3. "Free up an hour" — L
+### 2. "Free up an hour" — L
 
 From Ellie. The assistant is seven intents deep: add, schedule, unschedule,
 complete, delete, priority, plan. It can execute but cannot negotiate.
@@ -109,7 +109,7 @@ complete, delete, priority, plan. It can execute but cannot negotiate.
 **Done when** a vague request returns options with previews, and applying one is a
 single undoable step that shows exactly what moved.
 
-### 4. Folders — M
+### 3. Folders — M
 
 From Todoist sections and TickTick lists. Projects are flat.
 
@@ -126,7 +126,7 @@ can span a folder.
 
 Not features — things that are wrong or missing and should not be forgotten.
 
-- Four native time inputs follow browser locale, not 24-hour (item 2).
+- Four native time inputs follow browser locale, not 24-hour (item 1).
 - No unit tests. `scripts/verify.mjs` covers rendering and console cleanliness only
   (fifteen surfaces now, including Focus).
   The planner and the NLP parser are pure functions and are the first things worth
