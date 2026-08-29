@@ -10,6 +10,7 @@ import type {
   Label,
   PanelId,
   Project,
+  Recurrence,
   Settings,
   Task,
   TaskFilter,
@@ -28,6 +29,7 @@ import {
   toKey,
 } from './date'
 import { blockConflicts, planRange } from './planner'
+import { SERIES_HORIZON, durationOf, occurrenceStarts, seriesFrom, seriesOf } from './series'
 import { DEFAULT_SETTINGS, seedState } from './seed'
 
 type Entities = {
@@ -43,6 +45,9 @@ type Entities = {
 type Snapshot = Entities
 
 export type RefitSummary = { moved: number; dropped: number; days: string[] }
+
+/** `this` one occurrence, `future` this and everything after, `all` the series. */
+export type SeriesScope = 'this' | 'future' | 'all'
 
 export type Toast = { id: string; text: string; kind: 'ok' | 'warn' | 'info'; action?: { label: string; run: () => void } }
 
@@ -102,8 +107,11 @@ type Actions = {
 
   /* events */
   addEvent: (e: Partial<CalEvent> & { title: string; start: number; end: number }) => ID
-  updateEvent: (id: ID, patch: Partial<CalEvent>, history?: boolean) => void
-  deleteEvent: (id: ID) => void
+  /** How far a change to one occurrence of a series should reach. */
+  updateEvent: (id: ID, patch: Partial<CalEvent>, history?: boolean, scope?: SeriesScope) => void
+  deleteEvent: (id: ID, scope?: SeriesScope) => void
+  /** Re-issues the occurrences from one onward: new time, new rule, or none. */
+  reseriesEvent: (id: ID, recurrence?: Recurrence) => void
 
   /* projects */
   addProject: (p: Partial<Project> & { name: string }) => ID
@@ -383,25 +391,91 @@ export const useStore = create<State & Actions>()(
           projectId: e.projectId,
           color: e.color,
           tentative: e.tentative ?? false,
+          seriesId: e.seriesId,
+          recurrence: e.recurrence,
         }
         set((s) => ({
           events: { ...s.events, [id]: ev },
           history: pushHistory(s),
         }))
+        // A repeating meeting is issued as real occurrences up front, so every
+        // later edit to one of them is an ordinary edit to that row.
+        if (ev.recurrence) {
+          const length = durationOf(ev)
+          const starts = occurrenceStarts(ev, ev.end, SERIES_HORIZON - 1)
+          set((s) => {
+            const events = { ...s.events }
+            for (const start of starts) {
+              const oid = uid('e')
+              events[oid] = { ...ev, id: oid, start, end: start + length }
+            }
+            return { events, history: pushHistory(s) }
+          })
+        }
         return id
       },
-      updateEvent: (id, patch, history = true) =>
+      updateEvent: (id, patch, history = true, scope = 'this') =>
         set((s) => {
           const ev = s.events[id]
           if (!ev) return {}
           const events = { ...s.events, [id]: { ...ev, ...patch } }
+          // A time change on one occurrence of a series shifts the rest by the
+          // same amount, so a 09:00 standup stays a 09:00 standup.
+          if (ev.seriesId && scope !== 'this' && patch.start !== undefined && ev.start !== undefined) {
+            const delta = patch.start - ev.start
+            for (const other of scope === 'all' ? seriesOf(s.events, id) : seriesFrom(s.events, id)) {
+              if (other.id === id) continue
+              events[other.id] = { ...other, start: other.start + delta, end: other.end + delta }
+            }
+          }
+          if (ev.seriesId && scope === 'all') {
+            for (const other of seriesOf(s.events, id)) {
+              if (other.id !== id) events[other.id] = { ...events[other.id], ...patch }
+            }
+          }
           return history ? { events, history: pushHistory(s) } : { events }
         }),
-      deleteEvent: (id) =>
-        set((s) => ({
-          events: Object.fromEntries(Object.entries(s.events).filter(([k]) => k !== id)),
-          history: pushHistory(s),
-        })),
+      deleteEvent: (id, scope = 'this') =>
+        set((s) => {
+          const ev = s.events[id]
+          const drop =
+            scope === 'all'
+              ? seriesOf(s.events, id).map((e) => e.id)
+              : scope === 'future' && ev?.seriesId
+                ? seriesFrom(s.events, id).map((e) => e.id)
+                : [id]
+          const gone = new Set(drop)
+          return {
+            events: Object.fromEntries(Object.entries(s.events).filter(([k]) => !gone.has(k))),
+            history: pushHistory(s),
+          }
+        }),
+      /**
+       * Change or clear the repeat rule, re-issuing the occurrences from this
+       * one onward so the future is rebuilt from the edited row.
+       */
+      reseriesEvent: (id, recurrence) =>
+        set((s) => {
+          const seed = s.events[id]
+          if (!seed) return {}
+          const events = { ...s.events }
+          const length = durationOf(seed)
+          const seriesId = recurrence ? seed.seriesId ?? uid('sr') : undefined
+          events[id] = { ...seed, recurrence, seriesId }
+          if (seed.seriesId) {
+            for (const other of seriesFrom(s.events, id)) {
+              if (other.id !== id) delete events[other.id]
+            }
+          }
+          if (recurrence) {
+            const starts = occurrenceStarts({ ...seed, recurrence }, seed.end, SERIES_HORIZON - 1)
+            for (const start of starts) {
+              const oid = uid('e')
+              events[oid] = { ...seed, id: oid, start, end: start + length, recurrence, seriesId }
+            }
+          }
+          return { events, history: pushHistory(s) }
+        }),
 
       /* ------------------------------ projects ------------------------------ */
       addProject: (p) => {
