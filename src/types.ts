@@ -181,6 +181,11 @@ export type ChatMessage = {
   ts: number
   /** Actions the assistant actually applied, for the "undo" affordance. */
   applied?: string[]
+  /**
+   * Choices the assistant offers instead of taking. Serializable, so a proposal
+   * can sit in the transcript and be applied later.
+   */
+  options?: { id: string; label: string; detail: string; action: unknown }[]
   pending?: boolean
   error?: boolean
 }
