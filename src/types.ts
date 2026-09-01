@@ -120,12 +120,27 @@ export type Doc = {
   pinned: boolean
 }
 
+/**
+ * One level of grouping above a project.
+ *
+ * Deliberately a single level: a second entity type that nests would have to be
+ * understood by every filter, view and capture rule. A folder is a label for a
+ * set of projects, nothing more.
+ */
+export type Folder = {
+  id: ID
+  name: string
+  order: number
+  archived: boolean
+}
+
 export type Project = {
   id: ID
   name: string
   color: string
   glyph: string
   goal?: string
+  folderId?: ID
   archived: boolean
   order: number
   createdAt: number
@@ -193,6 +208,7 @@ export type ChatMessage = {
 /** One condition a saved filter asks of a task. */
 export type FilterClause =
   | { kind: 'project'; id: ID }
+  | { kind: 'folder'; id: ID }
   | { kind: 'label'; id: ID }
   | { kind: 'priority'; priority: Priority }
   | { kind: 'due'; window: 'overdue' | 'today' | 'tomorrow' | 'week' | 'none' }
