@@ -79,7 +79,7 @@ text never silently moves the block.
   Conditions on project, label, priority, due window, whether it is on the clock, and
   energy, combined with *and*. Filters live in the sidebar with a live count, take the
   number keys after the fixed views, and travel with your export.
-- **Quick capture** parses `#project`, `@label`, `!1`–`!4`, `tomorrow`, `at 9:30`, `for 45m`, `every tue`, and shows a live reading of what it understood. Typed times may be 12- or 24-hour; everything Tempo renders is 24-hour.
+- **Quick capture** parses `#project`, `@label`, `!1`–`!4`, `tomorrow`, `at 9:30`, `for 45m`, `every tue`, and shows a live reading of what it understood. Typed times may be 12- or 24-hour; everything Tempo *shows* is 24-hour, including the time fields — there is no native time input left in the app.
 - **Views**: day, week, month, agenda (7/14/21 days), inbox/today/upcoming lists, saved
   filters, focus, Eisenhower matrix, project board, habits, notes, review.
 - **Repeating meetings** — set a repeat rule in the event panel and the occurrences are
