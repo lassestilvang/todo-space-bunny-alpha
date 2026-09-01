@@ -14,6 +14,14 @@ more truthful, more drivable, or more honest about time is out of scope.
 
 ## Now
 
+**A test suite for the pure functions** — `done`. Ninety-seven tests over the planner, the
+capture parser, the clock, saved filters, deadline risk, the focus accounting, the adviser
+and the room proposals (`npm test`). They are not decoration: the first run found two real
+parser bugs (an overnight range gaining twelve hours instead of a day, and "at 25:00"
+wrapping to 01:00) and an off-by-one that made the adviser say "due in 8 days" for
+something due in seven and "due tomorrow" for something due today. What the suite cannot
+reach is the React layer, which is noted in Known gaps.
+
 **Folders** — `done`. One level of grouping above a project, and deliberately no more: a
 second entity type that nests would have to be understood by every filter, view and capture
 rule, while a folder is just a label for a set of projects. The sidebar files projects under
@@ -109,11 +117,11 @@ never move, and nothing new gets scheduled. See README → *Keeping the plan tru
 
 Not features — things that are wrong or missing and should not be forgotten.
 
-- No unit tests. `scripts/verify.mjs` covers rendering and console cleanliness only
-  (fifteen surfaces now, including Focus). Time formatting and the clock parser are now
-  pure functions in `src/lib/clock.ts`, which makes them easy to cover.
-  The planner, the NLP parser and `src/lib/room.ts` are pure functions and are the first
-  things worth testing properly.
+- The pure functions are covered — 97 tests over the planner, the capture parser, the
+  clock, filters, risk, focus, the adviser and the room proposals (`npm test`) — but the
+  React surfaces are not. `scripts/verify.mjs` only proves fifteen views render without a
+  console error. Anything with drag state, the detail panel and the modals is still
+  untested, and that is where the two worst bugs so far have lived.
 - The assistant negotiates about *today* only. "Free up an hour tomorrow morning" is read
   as today, which is the wrong answer rather than a refusal — worth a day parameter before
   anyone relies on it.
@@ -147,8 +155,8 @@ Not features — things that are wrong or missing and should not be forgotten.
   and honest counts already carry the signal.
 - **Sharing, accounts, sync.** Tempo is local-first on purpose. Adding a backend
   changes the product, not just the feature set.
-- **Natural-language *event* creation** ("meeting with Ana tuesday 2pm") until the
-  parser is covered by tests. Capture already handles it; events do not, and a
-  half-working parser that creates the wrong meeting is worse than none.
+- **Natural-language *event* creation** ("meeting with Ana tuesday 2pm"). The parser now
+  has tests behind it, so this is unblocked rather than forbidden — but it is a new entity
+  type on the calendar and worth doing deliberately, not as a leftover.
 - **A mobile layout.** The grid needs width to be legible. A phone-shaped Tempo would
   be a different app with a different name.
