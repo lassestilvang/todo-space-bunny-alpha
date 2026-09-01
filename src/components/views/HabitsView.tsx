@@ -28,6 +28,8 @@ import {
   type ColorToken,
 } from '@/lib/selectors'
 import { useStore } from '@/lib/store'
+import { TimeField } from '@/components/TimeField'
+import { clockText } from '@/lib/clock'
 import {
   Btn,
   Empty,
@@ -76,16 +78,7 @@ const cadenceLabel = (h: Habit): string => {
     .join(' ')
 }
 
-const minToClock = (m: number): string => {
-  const mm = ((m % 1440) + 1440) % 1440
-  return `${`${Math.floor(mm / 60)}`.padStart(2, '0')}:${`${mm % 60}`.padStart(2, '0')}`
-}
-
-const clockToMin = (v: string): number | null => {
-  const m = /^(\d{1,2}):(\d{2})$/.exec(v)
-  if (!m) return null
-  return Number(m[1]) * 60 + Number(m[2])
-}
+const minToClock = (m: number): string => clockText(m)
 
 /* ------------------------------------------------------------------ atoms */
 
@@ -758,14 +751,10 @@ export function HabitsView() {
             hint={draft.anchorMin === null ? 'No reservation' : minToClock(draft.anchorMin)}
           >
             <div className="flex items-center gap-1.5">
-              <Input
-                type="time"
-                aria-label="Anchor time"
-                className="w-[104px]"
-                value={draft.anchorMin === null ? '' : minToClock(draft.anchorMin)}
-                onChange={(e) =>
-                  setDraft({ ...draft, anchorMin: clockToMin(e.target.value) })
-                }
+              <TimeField
+                ariaLabel="Anchor time"
+                value={draft.anchorMin}
+                onChange={(minutes) => setDraft({ ...draft, anchorMin: minutes })}
               />
               {draft.anchorMin !== null && (
                 <Btn variant="quiet" onClick={() => setDraft({ ...draft, anchorMin: null })}>
