@@ -188,7 +188,7 @@ export function seedState() {
     projectId: deepWork,
     priority: 2,
     due: key(0),
-    scheduled: block(d(0), 11 * 60, 60),
+    scheduled: block(d(0), 10 * 60, 60),
     durationMin: 60,
     energy: 'deep',
     dayPart: 'morning',
@@ -366,8 +366,8 @@ export function seedState() {
     E({ title: 'Standup', start: atMinutes(day, 9 * 60 + 30), end: atMinutes(day, 9 * 60 + 45), projectId: deepWork })
     E({
       title: 'Design review',
-      start: atMinutes(day, 13 * 60),
-      end: atMinutes(day, 14 * 60),
+      start: atMinutes(day, 13 * 60 + 30),
+      end: atMinutes(day, 14 * 60 + 30),
       projectId: studio,
       location: 'Studio 2',
       notes: 'Bring the time-block prototype and the empty state.',
