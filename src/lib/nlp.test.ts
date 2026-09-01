@@ -4,11 +4,6 @@ import { parseInput, splitEntries } from './nlp'
 /** 2026-10-01 is a Thursday, which the date expectations depend on. */
 const NOW = new Date(2026, 9, 1, 9, 0)
 
-const at = (h: number, m = 0) => {
-  const d = new Date(2026, 9, 1)
-  d.setHours(h, m, 0, 0)
-  return d
-}
 const clockOf = (t: number | undefined) =>
   t === undefined ? null : new Date(t).toTimeString().slice(0, 5)
 
