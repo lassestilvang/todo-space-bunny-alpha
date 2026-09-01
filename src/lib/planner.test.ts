@@ -3,23 +3,25 @@ import type { CalEvent, Habit, Settings, Task } from '@/types'
 import { fixedBusy, mergeIntervals, planRange, subtract, type Interval } from './planner'
 
 const DAY = '2026-10-01' // a Thursday
-const H = 3_600_000
 
 const settings: Settings = {
   theme: 'dark',
   gridStart: 6 * 60,
   gridEnd: 22 * 60,
-  snapMin: 15,
-  bufferMin: 10,
-  maxBlockMin: 120,
   workStart: 8 * 60 + 30,
   workEnd: 18 * 60,
   workDays: [1, 2, 3, 4, 5],
+  snapMin: 15,
   defaultDuration: 30,
+  defaultPriority: 4,
   autoPlan: true,
   focusGoalMin: 100,
   soundOn: false,
+  bufferMin: 10,
+  maxBlockMin: 120,
+  llm: { enabled: false, provider: 'anthropic', apiKey: '', model: 'claude-sonnet-5', endpoint: '' },
   assistantOpen: false,
+  reduceDensity: false,
 }
 
 const at = (h: number, m = 0) => {
@@ -39,8 +41,10 @@ const task = (over: Partial<Task> = {}): Task => ({
   due: DAY,
   dueHasTime: false,
   scheduled: null,
+  priority: 3,
   durationMin: 60,
   energy: 'deep',
+  dayPart: 'any',
   labelIds: [],
   subtasks: [],
   reminders: [],
@@ -72,6 +76,7 @@ const habit = (anchorMin: number, durationMin = 30): Habit => ({
   anchorMin,
   durationMin,
   log: [],
+  order: 0,
   archived: false,
   createdAt: at(7),
 })
