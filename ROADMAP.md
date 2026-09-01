@@ -14,6 +14,14 @@ more truthful, more drivable, or more honest about time is out of scope.
 
 ## Now
 
+**Folders** — `done`. One level of grouping above a project, and deliberately no more: a
+second entity type that nests would have to be understood by every filter, view and capture
+rule, while a folder is just a label for a set of projects. The sidebar files projects under
+their folder with anything unfiled under "Elsewhere"; right-click a project to move it, or
+create a folder from the group's own button. Deleting a folder keeps its projects — it only
+takes away their home. Saved filters compose with it: a `Folder` condition matched nine
+tasks in the sample, all of them in the folder, and left the twelve unfiled ones out.
+
 **"Free up an hour"** — `done`. "Free up an hour at 14:00" is a question about where to
 give up time, not an instruction, so it is answered with proposals instead of a mutation.
 `src/lib/room.ts` reads the requested length and window ("an hour", "90 minutes", "this
@@ -97,19 +105,6 @@ never move, and nothing new gets scheduled. See README → *Keeping the plan tru
 
 ---
 
-## Bigger, later
-
-### 1. Folders — M
-
-From Todoist sections and TickTick lists. Projects are flat.
-
-- One level of folder above project, so the sidebar can group without a second
-  entity type everywhere.
-- Should land *after* saved filters, which it composes with.
-
-**Done when** a folder can contain projects, the sidebar groups by it, and a filter
-can span a folder.
-
 ---
 
 ## Known gaps
@@ -136,6 +131,9 @@ Not features — things that are wrong or missing and should not be forgotten.
 - A `planLocked` block can sit underneath a meeting, because the user is allowed to
   put it there. This is deliberate, and deadline risk surfacing now makes the
   schedule itself honest, but the overlap is still only visible on the block.
+- Folders are one level and carry no colour, order beyond their own row, or nested
+  projects-of-projects. That was the point of stopping at one, but it does mean the
+  sidebar cannot express "Studio / Deep Work" as a path.
 - The seed workspace ships with three overlaps on the first day: the tutorial block
   sits under the Standup, a planner block sits against the 1:1 with Ana, and Lunch
   with Sam runs into Design review. The refit repairs the second kind on the first
