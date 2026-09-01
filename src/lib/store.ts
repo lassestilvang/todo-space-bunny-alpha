@@ -423,15 +423,17 @@ export const useStore = create<State & Actions>()(
           history: pushHistory(s),
         }))
         // A repeating meeting is issued as real occurrences up front, so every
-        // later edit to one of them is an ordinary edit to that row.
+        // later edit to one of them is an ordinary edit to that row. They need a
+        // shared id to be a series at all, so mint one here.
         if (ev.recurrence) {
+          const seriesId = ev.seriesId ?? uid('sr')
           const length = durationOf(ev)
-          const starts = occurrenceStarts(ev, ev.end, SERIES_HORIZON - 1)
+          const starts = occurrenceStarts({ ...ev, seriesId }, ev.end, SERIES_HORIZON - 1)
           set((s) => {
-            const events = { ...s.events }
+            const events = { ...s.events, [id]: { ...ev, seriesId } }
             for (const start of starts) {
               const oid = uid('e')
-              events[oid] = { ...ev, id: oid, start, end: start + length }
+              events[oid] = { ...ev, id: oid, seriesId, start, end: start + length }
             }
             return { events, history: pushHistory(s) }
           })
