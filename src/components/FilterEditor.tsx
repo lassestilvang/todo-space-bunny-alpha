@@ -10,6 +10,7 @@ const SELECT =
 
 const KINDS: { kind: FilterClause['kind']; label: string }[] = [
   { kind: 'project', label: 'Project' },
+  { kind: 'folder', label: 'Folder' },
   { kind: 'label', label: 'Label' },
   { kind: 'priority', label: 'Priority' },
   { kind: 'due', label: 'Due' },
@@ -18,10 +19,17 @@ const KINDS: { kind: FilterClause['kind']; label: string }[] = [
 ]
 
 /** A first clause of the kind, so the row is always valid the moment it exists. */
-function firstOf(kind: FilterClause['kind'], projects: string[], labels: string[]): FilterClause {
+function firstOf(
+  kind: FilterClause['kind'],
+  projects: string[],
+  labels: string[],
+  folders: string[],
+): FilterClause {
   switch (kind) {
     case 'project':
       return { kind, id: projects[0] ?? '' }
+    case 'folder':
+      return { kind, id: folders[0] ?? '' }
     case 'label':
       return { kind, id: labels[0] ?? '' }
     case 'priority':
@@ -32,6 +40,8 @@ function firstOf(kind: FilterClause['kind'], projects: string[], labels: string[
       return { kind, value: 'no' }
     case 'energy':
       return { kind, energy: 'deep' }
+    default:
+      return { kind: 'due', window: 'week' }
   }
 }
 
@@ -50,6 +60,7 @@ export function FilterEditor({
   const filters = useStore((s) => s.filters)
   const projects = useStore((s) => s.projects)
   const labels = useStore((s) => s.labels)
+  const folders = useStore((s) => s.folders)
   const tasks = useStore((s) => s.tasks)
   const addFilter = useStore((s) => s.addFilter)
   const updateFilter = useStore((s) => s.updateFilter)
@@ -61,13 +72,16 @@ export function FilterEditor({
 
   const projectIds = Object.keys(projects)
   const labelIds = Object.keys(labels)
+  const folderIds = Object.keys(folders)
   const draft: TaskFilter = {
     id: existing?.id ?? 'draft',
     name: name.trim() || 'Untitled filter',
     clauses,
     order: existing?.order ?? 0,
   }
-  const matchCount = Object.values(tasks).filter((t) => !t.completed && matchesFilter(t, draft, Date.now())).length
+  const matchCount = Object.values(tasks).filter(
+    (t) => !t.completed && matchesFilter(t, draft, Date.now(), (id) => projects[id]?.folderId),
+  ).length
 
   const patch = (i: number, next: FilterClause) =>
     setClauses((cs) => cs.map((c, n) => (n === i ? next : c)))
@@ -134,7 +148,10 @@ export function FilterEditor({
                 <select
                   value={c.kind}
                   onChange={(e) =>
-                    patch(i, firstOf(e.target.value as FilterClause['kind'], projectIds, labelIds))
+                    patch(
+                      i,
+                      firstOf(e.target.value as FilterClause['kind'], projectIds, labelIds, folderIds),
+                    )
                   }
                   className={SELECT}
                   aria-label="Condition"
@@ -157,6 +174,21 @@ export function FilterEditor({
                     {projectIds.map((id) => (
                       <option key={id} value={id}>
                         {projects[id].name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                {c.kind === 'folder' && (
+                  <select
+                    value={c.id}
+                    onChange={(e) => patch(i, { kind: 'folder', id: e.target.value })}
+                    className={`${SELECT} flex-1`}
+                    aria-label="Folder"
+                  >
+                    {folderIds.length === 0 && <option value="">no folders yet</option>}
+                    {folderIds.map((id) => (
+                      <option key={id} value={id}>
+                        in {folders[id].name}
                       </option>
                     ))}
                   </select>
@@ -243,7 +275,7 @@ export function FilterEditor({
             size="sm"
             className="mt-2"
             onClick={() =>
-              setClauses((cs) => [...cs, firstOf('due', projectIds, labelIds)])
+              setClauses((cs) => [...cs, firstOf('due', projectIds, labelIds, folderIds)])
             }
           >
             <Plus size={12} />
