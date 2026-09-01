@@ -4,6 +4,7 @@ import { planRange, toBlocks } from './planner'
 import { addDays, fmtTime, fromKey, isToday, toKey, WEEKDAYS } from './date'
 import { parseInput } from './nlp'
 import { sortTasks } from './selectors'
+import { proposeRoom, roomReply } from './room'
 
 /**
  * The coach. Works with no network at all — the local planner understands the
@@ -19,10 +20,25 @@ export type AssistantAction =
   | { type: 'delete'; match: string }
   | { type: 'priority'; match: string; priority: number }
   | { type: 'plan'; days?: number }
+  /** Move a block to an exact range — used by the "make room" proposals. */
+  | { type: 'move'; match: string; start: number; end: number }
+
+/**
+ * A choice the assistant offers rather than takes. Serializable, so it survives
+ * the chat being persisted, and applying one is a single undoable step.
+ */
+export type AssistantOption = {
+  id: string
+  label: string
+  detail: string
+  action: AssistantAction
+}
 
 export type AssistantReply = {
   reply: string
   actions: AssistantAction[]
+  /** Ways to carry out a request that is a negotiation, not an instruction. */
+  options?: AssistantOption[]
   /** Set when the answer is purely informational. */
   data?: { kind: 'list'; items: { title: string; sub: string; id?: ID }[] }
 }
@@ -178,6 +194,16 @@ export function applyActions(actions: AssistantAction[]): string[] {
         done.push(`“${t.title}” → P${a.priority}`)
         break
       }
+      case 'move': {
+        const t = findTask(a.match)
+        if (!t) {
+          done.push(`No open task matching “${a.match}”`)
+          break
+        }
+        s.scheduleTask(t.id, { start: a.start, end: a.end })
+        done.push(`Moved “${t.title}” to ${fmtTime(a.start)}`)
+        break
+      }
       case 'plan': {
         const days = a.days ?? 1
         const from = toKey(new Date())
@@ -219,6 +245,17 @@ function localRespond(input: string): AssistantReply | null {
   const all = Object.values(s.tasks)
   const open = sortTasks(all.filter((t) => !t.completed))
   const todayKey = toKey(new Date())
+
+  // "Free up an hour this afternoon" is a question about where to give up time,
+  // not an instruction, so it comes back as options rather than a mutation.
+  if (/\b(free up|make room|clear (my |the )?(afternoon|morning|evening|calendar)|open up|need an? (hour|slot)|find (me )?(an? )?(hour|slot)|block out an? hour)\b/.test(lower)) {
+    const report = proposeRoom(all, Object.values(s.events), Object.values(s.habits), s.settings, Date.now(), q)
+    return {
+      reply: roomReply(report),
+      actions: [],
+      options: report.proposals.map((p) => ({ id: p.id, label: p.label, detail: p.detail, action: p.action })),
+    }
+  }
 
   if (/^(plan|schedule (my|the) day|autoplan|auto-plan|fit my day)\b/.test(lower)) {
     const report = planRange(
