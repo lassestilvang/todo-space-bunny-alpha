@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import {
   CalendarDays,
+  Check,
   ChartNoAxesColumn,
   ChevronLeft,
   Columns3,
@@ -95,6 +96,7 @@ export function Sidebar() {
   const setFilter = useStore((s) => s.setFilter)
   const [editFilter, setEditFilter] = useState<string | null | undefined>(undefined)
   const [newProject, setNewProject] = useState(false)
+  const [filing, setFiling] = useState<string | null>(null)
   const [newFolder, setNewFolder] = useState(false)
   const [folderName, setFolderName] = useState('')
   const [projectName, setProjectName] = useState('')
@@ -122,65 +124,65 @@ export function Sidebar() {
     [projects],
   )
 
-  /** One project line: click to scope the board, right-click to file it away. */
+  /** One project line: click to scope the board, or file it away from either control. */
   const projectRow = (p: Project) => {
     const n = allTasks.filter((t) => t.projectId === p.id && !t.completed).length
     const active = activeProject === p.id
     return (
-      <button
+      <div
         key={p.id}
-        onClick={() => {
-          setActiveProject(active ? 'all' : p.id)
-          setView('kanban')
-        }}
-        onContextMenu={(e) => {
-          e.preventDefault()
-          menu.show(
-            e,
-            [
-              { kind: 'label', text: 'Move to folder' },
-              ...folderList.map((f) => ({
-                kind: 'item' as const,
-                label: p.folderId === f.id ? `${f.name} (here)` : f.name,
-                onSelect: () => updateProject(p.id, { folderId: f.id }),
-              })),
-              {
-                kind: 'item',
-                label: p.folderId ? 'No folder' : 'No folder (here)',
-                onSelect: () => updateProject(p.id, { folderId: undefined }),
-              },
-            ],
-          )
-        }}
-        title={collapsed ? p.name : undefined}
         className={cn(
-          'press group flex w-full items-center gap-2 rounded-[var(--radius-md)] px-2 py-[6px] text-left text-[12.5px]',
+          'group flex w-full items-center rounded-[var(--radius-md)] pr-1',
           active ? 'bg-surface-3 text-ink' : 'text-ink-2 hover:bg-surface-2 hover:text-ink',
         )}
       >
-        <span
-          className="grid size-[18px] shrink-0 place-items-center rounded-[5px] text-[10px]"
-          style={{
-            background: `color-mix(in oklab, var(--color-${p.color}) 20%, transparent)`,
-            color: `var(--color-${p.color})`,
+        <button
+          onClick={() => {
+            setActiveProject(active ? 'all' : p.id)
+            setView('kanban')
           }}
+          title={collapsed ? p.name : undefined}
+          aria-current={active ? 'page' : undefined}
+          className={cn(
+            'press flex min-w-0 flex-1 items-center gap-2 px-2 py-[6px] text-left text-[12.5px]',
+            active ? 'text-ink' : '',
+          )}
         >
-          {p.glyph}
-        </span>
+          <span
+            className="grid size-[18px] shrink-0 place-items-center rounded-[5px] text-[10px]"
+            style={{
+              background: `color-mix(in oklab, var(--color-${p.color}) 20%, transparent)`,
+              color: `var(--color-${p.color})`,
+            }}
+          >
+            {p.glyph}
+          </span>
+          {!collapsed && (
+            <>
+              <span className="min-w-0 flex-1 truncate">{p.name}</span>
+              {n > 0 && <span className="tnum text-[10.5px] text-ink-4">{n}</span>}
+            </>
+          )}
+        </button>
         {!collapsed && (
-          <>
-            <span className="min-w-0 flex-1 truncate">{p.name}</span>
-            {n > 0 && <span className="tnum text-[10.5px] text-ink-4">{n}</span>}
-          </>
+          <button
+            aria-label={`File ${p.name}`}
+            onClick={() => setFiling(p.id)}
+            className="press shrink-0 rounded-[5px] p-[3px] text-ink-4 opacity-0 transition-opacity hover:bg-surface-3 hover:text-ink-2 focus-visible:opacity-100 group-hover:opacity-100"
+          >
+            <FolderPlus size={11} />
+          </button>
         )}
-      </button>
+      </div>
     )
   }
-  const labelList = useMemo(() => Object.values(labels), [labels])
+
+
   const folderList = useMemo(
     () => Object.values(folders).filter((f) => !f.archived).sort((a, b) => a.order - b.order),
     [folders],
   )
+  const labelList = useMemo(() => Object.values(labels), [labels])
   const menu = useContextMenu()
   const filterList = useMemo(
     () => Object.values(filters).sort((a, b) => a.order - b.order),
@@ -424,6 +426,50 @@ export function Sidebar() {
         </IconBtn>
       </div>
 
+      <Modal
+        open={filing !== null}
+        onClose={() => setFiling(null)}
+        title={filing ? `File ${projects[filing]?.name ?? 'project'}` : 'File project'}
+        width={340}
+        footer={<Btn onClick={() => setFiling(null)}>Done</Btn>}
+      >
+        <div className="space-y-1 p-4 pt-0">
+          {folderList.map((f) => (
+            <button
+              key={f.id}
+              onClick={() => {
+                updateProject(filing!, { folderId: f.id })
+                setFiling(null)
+              }}
+              className={cn(
+                'press flex w-full items-center justify-between gap-2 rounded-[var(--radius-md)] border px-3 py-2 text-left text-[12.5px]',
+                projects[filing!]?.folderId === f.id
+                  ? 'border-signal/45 bg-signal/10 text-ink'
+                  : 'border-line bg-surface-2 text-ink-2 hover:bg-surface-3',
+              )}
+            >
+              {f.name}
+              {projects[filing!]?.folderId === f.id && <Check size={12} className="text-signal" />}
+            </button>
+          ))}
+          <button
+            onClick={() => {
+              updateProject(filing!, { folderId: undefined })
+              setFiling(null)
+            }}
+            className={cn(
+              'press flex w-full items-center justify-between gap-2 rounded-[var(--radius-md)] border px-3 py-2 text-left text-[12.5px]',
+              !projects[filing!]?.folderId
+                ? 'border-signal/45 bg-signal/10 text-ink'
+                : 'border-line bg-surface-2 text-ink-2 hover:bg-surface-3',
+            )}
+          >
+            No folder
+            {!projects[filing!]?.folderId && <Check size={12} className="text-signal" />}
+          </button>
+        </div>
+      </Modal>
+
       {editFilter !== undefined && (
         <FilterEditor filterId={editFilter} onClose={() => setEditFilter(undefined)} />
       )}
@@ -585,52 +631,50 @@ function NavRow({
 }) {
   const Icon = item.icon
   return (
-    <button
-      onClick={onClick}
-      title={collapsed ? item.label : undefined}
-      aria-current={active ? 'page' : undefined}
+    <div
       className={cn(
-        'press flex w-full items-center gap-2.5 rounded-[var(--radius-md)] px-2 py-[6px] text-left text-[12.5px]',
+        'group flex w-full items-center rounded-[var(--radius-md)] pr-1',
         active ? 'bg-surface-3 text-ink' : 'text-ink-2 hover:bg-surface-2 hover:text-ink',
       )}
     >
-      <Icon size={14} className="shrink-0" />
-      {!collapsed && (
-        <>
-          <span className="min-w-0 flex-1 truncate">{item.label}</span>
-          {onEdit && (
-            <span
-              role="button"
-              tabIndex={0}
-              aria-label={`Edit ${item.label}`}
-              onClick={(e) => {
-                e.stopPropagation()
-                onEdit()
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.stopPropagation()
-                  onEdit()
-                }
-              }}
-              className="press shrink-0 rounded-[5px] p-[3px] text-ink-4 opacity-0 transition-opacity hover:bg-surface-3 hover:text-ink-2 focus-visible:opacity-100 group-hover:opacity-100"
-            >
-              <Settings2 size={11} />
-            </span>
-          )}
-          {count !== null && count !== undefined && count > 0 && (
-            <span
-              className={cn(
-                'tnum rounded-full px-1.5 py-[1px] text-[10px]',
-                risky ? 'bg-warn/20 text-warn' : 'bg-surface-3 text-ink-3',
-              )}
-            >
-              {count}
-            </span>
-          )}
-        </>
+      <button
+        onClick={onClick}
+        title={collapsed ? item.label : undefined}
+        aria-current={active ? 'page' : undefined}
+        className={cn(
+          'press flex min-w-0 flex-1 items-center gap-2.5 px-2 py-[6px] text-left text-[12.5px]',
+          active ? 'text-ink' : '',
+        )}
+      >
+        <Icon size={14} className="shrink-0" />
+        {!collapsed && (
+          <>
+            <span className="min-w-0 flex-1 truncate">{item.label}</span>
+            {count !== null && count !== undefined && count > 0 && (
+              <span
+                className={cn(
+                  'tnum rounded-full px-1.5 py-[1px] text-[10px]',
+                  risky ? 'bg-warn/20 text-warn' : 'bg-surface-3 text-ink-3',
+                )}
+              >
+                {count}
+              </span>
+            )}
+          </>
+        )}
+      </button>
+      {/* A sibling button rather than a control nested inside the row: nesting
+          one interactive element in another makes it unreachable by keyboard. */}
+      {onEdit && !collapsed && (
+        <button
+          aria-label={`Edit ${item.label}`}
+          onClick={onEdit}
+          className="press shrink-0 rounded-[5px] p-[3px] text-ink-4 opacity-0 transition-opacity hover:bg-surface-3 hover:text-ink-2 focus-visible:opacity-100 group-hover:opacity-100"
+        >
+          <Settings2 size={11} />
+        </button>
       )}
-    </button>
+    </div>
   )
 }
 
