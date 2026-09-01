@@ -33,6 +33,7 @@ import {
   addDays,
   describeRecurrence,
   fmtTime,
+  minOfDay,
   fromKey,
   MIN,
   toKey,
@@ -41,6 +42,7 @@ import { cn, cssColor, minutesLabel } from '@/lib/selectors'
 import { Btn, Checkbox, IconBtn, Input, Modal, Seg } from './ui'
 import { seriesOf } from '@/lib/series'
 import { plannedMinutes } from '@/lib/selectors'
+import { TimeField } from './TimeField'
 import { Markdown } from './Markdown'
 import { uid } from '@/lib/id'
 
@@ -268,23 +270,25 @@ function TaskEditor({ id, onClose }: { id: string; onClose: () => void }) {
             />
             {task.due && (
               <>
-                <input
-                  type="time"
+                <TimeField
+                  ariaLabel="Block starts at"
                   value={
                     task.scheduled
-                      ? fmtTime(task.scheduled.start)
+                      ? minOfDay(task.scheduled.start)
                       : task.dueHasTime
-                        ? '09:00'
-                        : ''
+                        ? 9 * 60
+                        : null
                   }
-                  onChange={(e) => {
-                    const [h, m] = e.target.value.split(':').map(Number)
-                    if (Number.isNaN(h)) return
+                  onChange={(minutes) => {
                     const day = fromKey(task.due!)
-                    const start = new Date(day).setHours(h, m, 0, 0)
+                    const start = new Date(day).setHours(
+                      Math.floor(minutes / 60),
+                      minutes % 60,
+                      0,
+                      0,
+                    )
                     schedule(id, { start, end: start + task.durationMin * MIN })
                   }}
-                  className="mono-clock h-7 rounded-[6px] border border-line bg-surface-2 px-2 text-[11.5px] text-ink-2 outline-none focus:border-line-strong"
                 />
                 <IconBtn
                   label="Go to this day"
@@ -621,7 +625,6 @@ function EventEditor({ id, onClose }: { id: string; onClose: () => void }) {
     null | { kind: 'delete' } | { kind: 'patch'; patch: Partial<CalEvent> }
   >(null)
   if (!event) return null
-  const timeValue = (t: number) => fmtTime(t)
   const occurrences = event.seriesId ? seriesOf(events, id).length : 1
 
   return (
@@ -645,35 +648,31 @@ function EventEditor({ id, onClose }: { id: string; onClose: () => void }) {
               }}
               className="mono-clock h-7 rounded-[6px] border border-line bg-surface-2 px-2 text-[11.5px] text-ink-2 outline-none"
             />
-            <input
-              type="time"
-              value={timeValue(event.start)}
-              onChange={(e) => {
-                const [h, m] = e.target.value.split(':').map(Number)
+            <TimeField
+              ariaLabel="Starts at"
+              value={minOfDay(event.start)}
+              onChange={(minutes) => {
                 const day = fromKey(toKey(event.start))
-                const start = new Date(day).setHours(h, m, 0, 0)
+                const start = new Date(day).setHours(Math.floor(minutes / 60), minutes % 60, 0, 0)
                 const patch = { start, end: start + (event.end - event.start) }
                 if (event.seriesId) setPending({ kind: 'patch', patch })
                 else update(id, patch, false)
               }}
-              className="mono-clock h-7 rounded-[6px] border border-line bg-surface-2 px-2 text-[11.5px] text-ink-2 outline-none"
             />
           </div>
         </Field>
 
         <Field label="Ends" icon={<Clock3 size={12} />}>
           <div className="flex items-center gap-1.5">
-            <input
-              type="time"
-              value={timeValue(event.end)}
-              onChange={(e) => {
-                const [h, m] = e.target.value.split(':').map(Number)
+            <TimeField
+              ariaLabel="Ends at"
+              value={minOfDay(event.end)}
+              onChange={(minutes) => {
                 const day = fromKey(toKey(event.start))
-                const patch = { end: new Date(day).setHours(h, m, 0, 0) }
+                const patch = { end: new Date(day).setHours(Math.floor(minutes / 60), minutes % 60, 0, 0) }
                 if (event.seriesId) setPending({ kind: 'patch', patch })
                 else update(id, patch, false)
               }}
-              className="mono-clock h-7 rounded-[6px] border border-line bg-surface-2 px-2 text-[11.5px] text-ink-2 outline-none"
             />
             <span className="mono-clock text-[10.5px] text-ink-4">
               {minutesLabel((event.end - event.start) / MIN)} long
