@@ -14,6 +14,15 @@ more truthful, more drivable, or more honest about time is out of scope.
 
 ## Now
 
+**The panels, and keyboard access to them** — `done`. Interaction tests for the detail
+panel (rename, priority, steps, delete, Enter and Escape, arrow-key nudging) and for the
+filter editor (a live count that changes as conditions change, create, delete). They
+found a real defect: the edit affordance on a sidebar row was a `role="button"` span
+*nested inside* the row's `<button>`, so it worked with a mouse and was unreachable
+from the keyboard. Both row types are now a container with two sibling buttons, and
+projects gained a "File" button that opens the same folder picker the right-click menu
+used to, so filing a project no longer needs a mouse at all.
+
 **Interaction tests, and three fixes they forced** — `done`. Eighteen checks driven through a
 real browser (`npm run verify:actions`), because jsdom would have to fake the layout the drag
 arithmetic reads. Each one pins a bug this app actually had, and they found three more:
@@ -147,10 +156,10 @@ never move, and nothing new gets scheduled. See README → *Keeping the plan tru
 
 Not features — things that are wrong or missing and should not be forgotten.
 
-- 143 unit tests (`npm test`) cover the logic, and eighteen interaction checks
-  (`npm run verify:actions`) cover dragging, resizing, cross-day moves, the inline field,
-  undo and the shortcuts in a real browser. Still uncovered: the detail panel's own forms,
-  the filter editor's live count, and anything a keyboard-only user does to them.
+- 143 unit tests (`npm test`) and 32 interaction checks (`npm run verify:actions`) cover
+  the logic, the grid, the detail panel, the filter editor, undo and the shortcuts in a
+  real browser. Still uncovered: the habit and document editors, the planner sheet's
+  preview, and the assistant beyond one "free up an hour" exchange.
 - The assistant negotiates about *today* only. "Free up an hour tomorrow morning" is read
   as today, which is the wrong answer rather than a refusal — worth a day parameter before
   anyone relies on it.
