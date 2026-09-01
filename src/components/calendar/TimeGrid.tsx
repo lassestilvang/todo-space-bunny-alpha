@@ -223,13 +223,15 @@ export function TimeGrid({
         })
         setPreview({ day: dayIndex, start, end: start + dur })
       } else if (d.mode === 'resize-start') {
+        // An edge is a *point* on the clock, not a span: clamping it with a
+        // minimum duration would bias the edge by that minimum.
         const start = blockStart({
           pointerMinutes: raw,
           grabOffsetMin: 0,
           snapMin,
           gridStart,
           gridEnd: ownStart + dur - MIN_BLOCK,
-          durationMin: MIN_BLOCK,
+          durationMin: 0,
         })
         setPreview({ day: ownDay, start, end: ownStart + dur })
       } else {
@@ -239,8 +241,8 @@ export function TimeGrid({
           snapMin,
           gridStart: ownStart + MIN_BLOCK,
           gridEnd,
-          durationMin: MIN_BLOCK,
-        }) + MIN_BLOCK
+          durationMin: 0,
+        })
         setPreview({ day: ownDay, start: ownStart, end })
       }
 
