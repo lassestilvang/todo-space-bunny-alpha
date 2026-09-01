@@ -14,6 +14,14 @@ more truthful, more drivable, or more honest about time is out of scope.
 
 ## Now
 
+**Tests for the store and the calendar's arithmetic** — `done`. The pure functions were
+covered first; this pass reached the two layers below them. Twenty-eight store tests over the
+refit, series scopes, subtask resizing and folder deletion, plus fourteen date tests over
+daylight-saving boundaries. They found two more real bugs: `addDays` added 24 *hours*, so
+every weekly recurrence drifted an hour across a clock change twice a year, and a recurring
+event created from scratch was issued as occurrences that shared no `seriesId` — which is
+what "move just this one" and "delete the whole series" depend on.
+
 **A test suite for the pure functions** — `done`. Ninety-seven tests over the planner, the
 capture parser, the clock, saved filters, deadline risk, the focus accounting, the adviser
 and the room proposals (`npm test`). They are not decoration: the first run found two real
@@ -117,11 +125,12 @@ never move, and nothing new gets scheduled. See README → *Keeping the plan tru
 
 Not features — things that are wrong or missing and should not be forgotten.
 
-- The pure functions are covered — 97 tests over the planner, the capture parser, the
-  clock, filters, risk, focus, the adviser and the room proposals (`npm test`) — but the
-  React surfaces are not. `scripts/verify.mjs` only proves fifteen views render without a
-  console error. Anything with drag state, the detail panel and the modals is still
-  untested, and that is where the two worst bugs so far have lived.
+- 125 tests cover the planner, the capture parser, the clock, the date arithmetic, saved
+  filters, deadline risk, the focus accounting, the adviser, the room proposals and the
+  store (`npm test`). The React surfaces are still not covered: `scripts/verify.mjs` only
+  proves fifteen views render without a console error. Drag state, the detail panel and
+  the modals remain untested, and the scroll-double-count bug that broke every drag lived
+  exactly there — it is the first thing to cover.
 - The assistant negotiates about *today* only. "Free up an hour tomorrow morning" is read
   as today, which is the wrong answer rather than a refusal — worth a day parameter before
   anyone relies on it.
