@@ -105,8 +105,6 @@ never move, and nothing new gets scheduled. See README → *Keeping the plan tru
 
 ---
 
----
-
 ## Known gaps
 
 Not features — things that are wrong or missing and should not be forgotten.
