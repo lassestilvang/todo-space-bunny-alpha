@@ -8,7 +8,6 @@ const at = (d: string, h: number, m = 0) => {
   x.setHours(h, m, 0, 0)
   return x.getTime()
 }
-const MIN = 60_000
 
 let n = 0
 const session = (over: Partial<Parameters<typeof Object>[0]> = {}) =>
