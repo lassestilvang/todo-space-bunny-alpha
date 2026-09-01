@@ -14,6 +14,19 @@ more truthful, more drivable, or more honest about time is out of scope.
 
 ## Now
 
+**Interaction tests, and three fixes they forced** — `done`. Eighteen checks driven through a
+real browser (`npm run verify:actions`), because jsdom would have to fake the layout the drag
+arithmetic reads. Each one pins a bug this app actually had, and they found three more:
+
+- A block resized from its bottom edge grew by fifteen extra minutes. My own refactor the
+  night before had clamped an *edge* as if it were a *span*, biasing it by the minimum length.
+- Dragging a block that displaced other work cost **two** undos, because the calendar's
+  re-fitting pushed a history entry of its own — so the first undo appeared to do nothing. A
+  refit is now recorded only when nothing else has, and folds into the change that caused it.
+- The sample workspace shipped with a task colliding with a meeting, so the calendar quietly
+  repaired itself on the first change and rearranged itself under the user. The sample is now
+  collision-free apart from the deliberate tutorial block.
+
 **The drag geometry, extracted and tested** — `done`. Every number a drag depends on now
 lives in `src/lib/grid.ts` as plain arithmetic, and the component calls it. The function that
 locates the pointer takes no scroll argument at all, which is the point: the original
@@ -134,12 +147,10 @@ never move, and nothing new gets scheduled. See README → *Keeping the plan tru
 
 Not features — things that are wrong or missing and should not be forgotten.
 
-- 140 tests cover the planner, the capture parser, the clock, the date arithmetic, the drag
-  geometry, saved filters, deadline risk, the focus accounting, the adviser, the room
-  proposals and the store (`npm test`). What is still uncovered is the React layer itself:
-  `scripts/verify.mjs` only proves fifteen views render without a console error. The detail
-  panel, the modals and the pointer-event choreography in `TimeGrid` are untested — though
-  the arithmetic under the pointer now is, which is where the worst bug lived.
+- 143 unit tests (`npm test`) cover the logic, and eighteen interaction checks
+  (`npm run verify:actions`) cover dragging, resizing, cross-day moves, the inline field,
+  undo and the shortcuts in a real browser. Still uncovered: the detail panel's own forms,
+  the filter editor's live count, and anything a keyboard-only user does to them.
 - The assistant negotiates about *today* only. "Free up an hour tomorrow morning" is read
   as today, which is the wrong answer rather than a refusal — worth a day parameter before
   anyone relies on it.
@@ -158,12 +169,9 @@ Not features — things that are wrong or missing and should not be forgotten.
 - Folders are one level and carry no colour, order beyond their own row, or nested
   projects-of-projects. That was the point of stopping at one, but it does mean the
   sidebar cannot express "Studio / Deep Work" as a path.
-- The seed workspace ships with three overlaps on the first day: the tutorial block
-  sits under the Standup, a planner block sits against the 1:1 with Ana, and Lunch
-  with Sam runs into Design review. The refit repairs the second kind on the first
-  change and leaves the first alone because it is a hand-placed block; the third is
-  two events, and neither is the app's to move. Worth tidying so the sample workspace
-  does not teach bad habits.
+- The sample workspace keeps one deliberate collision: the tutorial block sits under
+  the Standup, because it is a hand-placed block and hand-placed blocks are never moved.
+  That is the behaviour being demonstrated, but it does look like a mistake on first run.
 
 ---
 
