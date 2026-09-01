@@ -14,6 +14,14 @@ more truthful, more drivable, or more honest about time is out of scope.
 
 ## Now
 
+**A 24-hour time field** — `done`. The native `input[type=time]` rendered in the browser's
+locale, so the same build asked one person for "2:30 PM" and another for "14:30" while the
+rest of Tempo insisted on 24-hour. There is now no native time input anywhere in the app:
+`TimeField` always shows `HH:MM`, takes `9:30`, `09:30`, `0930` or `9`, nudges in 15-minute
+steps from its buttons or the arrow keys, and reverts to the last good value rather than
+guessing when the typing is nonsense. Used by the event start and end, a task's block
+start, and the habit anchor.
+
 **Subtasks count when planning** — `done`. A task's `durationMin` is the estimate for the
 whole job, so a task with steps only needs clock time for the steps that are left: one
 definition, `plannedMinutes`, in `src/lib/selectors.ts`, shared by the planner, the grid,
@@ -79,23 +87,9 @@ never move, and nothing new gets scheduled. See README → *Keeping the plan tru
 
 ---
 
-## Next up
-
-### 1. A 24-hour time field — S
-
-Four native `<input type="time">` widgets (event start and end, habit anchor, and
-working hours) render in the browser's locale format. Their values are 24-hour, but
-the widget is not, which is inconsistent with the rest of the app.
-
-- One small controlled field, used in all four places, with a 15-minute stepper.
-
-**Done when** no native time input remains and every time in the app reads 24-hour.
-
----
-
 ## Bigger, later
 
-### 2. "Free up an hour" — L
+### 1. "Free up an hour" — L
 
 From Ellie. The assistant is seven intents deep: add, schedule, unschedule,
 complete, delete, priority, plan. It can execute but cannot negotiate.
@@ -109,7 +103,7 @@ complete, delete, priority, plan. It can execute but cannot negotiate.
 **Done when** a vague request returns options with previews, and applying one is a
 single undoable step that shows exactly what moved.
 
-### 3. Folders — M
+### 2. Folders — M
 
 From Todoist sections and TickTick lists. Projects are flat.
 
@@ -126,9 +120,9 @@ can span a folder.
 
 Not features — things that are wrong or missing and should not be forgotten.
 
-- Four native time inputs follow browser locale, not 24-hour (item 1).
 - No unit tests. `scripts/verify.mjs` covers rendering and console cleanliness only
-  (fifteen surfaces now, including Focus).
+  (fifteen surfaces now, including Focus). Time formatting and the clock parser are now
+  pure functions in `src/lib/clock.ts`, which makes them easy to cover.
   The planner and the NLP parser are pure functions and are the first things worth
   testing properly.
 - Saved filters cover project, label, priority, due window, on-the-clock and energy.
