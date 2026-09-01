@@ -41,6 +41,7 @@ export function ListView({ view, onPlan }: { view: ViewId; onPlan: () => void })
   const tasks = useStore((s) => s.tasks)
   const projects = useStore((s) => s.projects)
   const labels = useStore((s) => s.labels)
+  const folders = useStore((s) => s.folders)
   const events = useStore((s) => s.events)
   const habits = useStore((s) => s.habits)
   const settings = useStore((s) => s.settings)
@@ -85,7 +86,7 @@ export function ListView({ view, onPlan }: { view: ViewId; onPlan: () => void })
       case 'filter': {
         const f = activeFilter ? filters[activeFilter] : null
         if (!f) return sortTasks(open)
-        return sortTasks(filterTasks(open, f, Date.now()))
+        return sortTasks(filterTasks(open, f, Date.now(), (id) => projects[id]?.folderId))
       }
       default:
         return sortTasks(open)
@@ -165,6 +166,10 @@ export function ListView({ view, onPlan }: { view: ViewId; onPlan: () => void })
     () => Object.fromEntries(Object.values(labels).map((l) => [l.id, l.name])),
     [labels],
   )
+  const folderNames = useMemo(
+    () => Object.fromEntries(Object.values(folders).map((f) => [f.id, f.name])),
+    [folders],
+  )
 
   return (
     <div className="min-h-0 flex-1 overflow-y-auto">
@@ -194,7 +199,11 @@ export function ListView({ view, onPlan }: { view: ViewId; onPlan: () => void })
                     key={i}
                     className="mono-clock rounded-full border border-line bg-surface-2 px-2 py-[2px] text-[10px] text-ink-3"
                   >
-                    {describeClause(c, { projects: projectNames, labels: labelNames })}
+                    {describeClause(c, {
+                      projects: projectNames,
+                      labels: labelNames,
+                      folders: folderNames,
+                    })}
                   </span>
                 ))}
                 <button
