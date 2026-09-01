@@ -59,18 +59,27 @@ export function parseRoomRequest(text: string, settings: Settings, now: number) 
   need = Math.max(5, Math.min(240, need))
 
   let from = defaultFrom(settings, now)
+  let rolledForward = false
   const clock = /(?:at|from)\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/.exec(lower)
   if (clock) {
     let h = Number(clock[1])
     const m = clock[2] ? Number(clock[2]) : 0
     if (clock[3] === 'pm' && h < 12) h += 12
     if (clock[3] === 'am' && h === 12) h = 0
-    from = Math.min(Math.max(h * 60 + m, 0), settings.workEnd - 15)
+    const asked = h * 60 + m
+    // "free up an hour at 3:00" in the afternoon means three, not three in the
+    // morning; a window that has already passed is no use to anyone.
+    if (asked < defaultFrom(settings, now)) {
+      from = defaultFrom(settings, now)
+      rolledForward = true
+    } else {
+      from = Math.min(Math.max(asked, 0), settings.workEnd - 15)
+    }
   } else if (/afternoon/.test(lower)) from = Math.max(settings.workStart, 13 * 60)
   else if (/morning/.test(lower)) from = settings.workStart
   else if (/evening|tonight/.test(lower)) from = Math.max(settings.workStart, 19 * 60)
 
-  return { need, from }
+  return { need, from, rolledForward }
 }
 
 /** Task blocks on one day, split into the ones the planner owns and the rest. */
@@ -96,7 +105,7 @@ export function proposeRoom(
   now: number,
   request: string,
 ): RoomReport {
-  const { need, from } = parseRoomRequest(request, settings, now)
+  const { need, from, rolledForward } = parseRoomRequest(request, settings, now)
   const key = toKey(now)
   const input: PlannerInput = { tasks, events, habits, settings }
   const day = fromKey(key)
@@ -106,6 +115,7 @@ export function proposeRoom(
   const { movable } = blocksOn(tasks, key)
   const window = { start: from, end: Math.min(from + need, settings.workEnd) }
   const notes: string[] = []
+  if (rolledForward) notes.push('That time has already passed today, so I looked from now.')
 
   // Blocks the planner owns, as clock intervals.
   const owned: Interval[] = movable.map((t) => ({
