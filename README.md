@@ -90,7 +90,11 @@ text never silently moves the block.
 - **Steps** are time-aware: a task with three steps asks the clock for a third of its
   estimate while two are outstanding, and ticking one shortens its block on the spot.
 - **Focus timer** with rounds and long breaks, opened from the sidebar pill as a modal, or full-screen with `F`. Focus mode shows one ring, the task, and what comes next; `Space` runs the session and `Esc` leaves with the session still running. Timer state lives outside React, so no surface can interrupt a run. Finished focus blocks are logged as store records; break sessions never pollute the numbers.
-- **Assistant** works offline against a deterministic intent engine (add, schedule, unschedule, complete, delete, priority, plan). It opens as a modal. Supply an Anthropic or OpenAI key in Settings if you want model-written replies.
+- **Coach** works offline against a deterministic intent engine (add, schedule, unschedule,
+  complete, delete, priority, plan). Ask it to "free up an hour at 14:00" and it proposes
+  ways to make room — move this block, drop that one, shorten the other — instead of
+  silently rearranging your afternoon; you pick, and one undo covers it. Supply an
+  Anthropic or OpenAI key in Settings for model-written replies.
 - **Phase chime** (Settings → Focus, off by default). A short two-note tone when a
   block or a break ends — low when a break starts, brighter when work resumes. Silent
   while the window is in the background, and it never overrides your system volume.
