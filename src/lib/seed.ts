@@ -2,6 +2,7 @@ import type {
   CalEvent,
   Doc,
   FocusSession,
+  Folder,
   Habit,
   Label,
   Project,
@@ -108,6 +109,11 @@ export function seedState() {
   const d = (n: number) => addDays(today, n)
   const key = (n: number) => toKey(d(n))
 
+  // One folder of work projects, so the grouping is visible from the first run.
+  const folders: Record<string, Folder> = {}
+  const work = uid('fo')
+  folders[work] = { id: work, name: 'Work', order: 0, archived: false }
+
   const projects: Record<string, Project> = {}
   const P = (
     name: string,
@@ -118,7 +124,17 @@ export function seedState() {
     archived = false,
   ): string => {
     const id = uid('p')
-    projects[id] = { id, name, color, glyph, goal, archived, order, createdAt: Date.now() }
+    projects[id] = {
+      id,
+      name,
+      color,
+      glyph,
+      goal,
+      folderId: name === 'Deep Work' || name === 'Studio' ? work : undefined,
+      archived,
+      order,
+      createdAt: Date.now(),
+    }
     return id
   }
 
@@ -526,6 +542,7 @@ Boiler service due Nov.`,
     habits,
     docs,
     projects,
+    folders,
     labels,
     filters: {},
     sessions,
