@@ -25,7 +25,7 @@ First load seeds a small sample workspace (projects, tasks, meetings, habits) so
 | `npm run build` | `tsc -b` then `vite build` into `dist/`. |
 | `npm run preview` | Serve the production build. |
 | `npm run lint` | oxlint. Zero errors; the warnings are mostly `react(purity)` for `new Date()` during render. |
-| `npm test` | Vitest over the pure functions: the planner, the capture parser, the clock, filters, risk, focus, the adviser and the room proposals. |
+| `npm test` | Vitest: the planner, the capture parser, the clock, the date arithmetic, filters, risk, focus, the adviser, the room proposals and the store. |
 | `node scripts/verify.mjs` | Headless visual smoke test: visits all 14 surfaces, screenshots them to `/tmp`, and fails loudly on console errors. |
 
 `verify.mjs` reads `URL`, `OUT`, and `CHROME_PATH` from the environment. It defaults to `http://localhost:5180`, the `/tmp/tempo` prefix, and a Playwright-managed Chrome for Testing build.
