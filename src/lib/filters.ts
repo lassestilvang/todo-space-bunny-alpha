@@ -1,4 +1,4 @@
-import type { FilterClause, Task, TaskFilter } from '@/types'
+import type { FilterClause, ID, Task, TaskFilter } from '@/types'
 import { MIN, addDays, fromKey, startOfDay, toKey } from './date'
 import { plannedMinutes } from './selectors'
 
@@ -32,11 +32,20 @@ function dueIn(task: Task, window: DueWindow, now: number): boolean {
   return task.due >= today && task.due <= end
 }
 
-export function clauseHolds(task: Task, clause: FilterClause, now: number): boolean {
+export function clauseHolds(
+  task: Task,
+  clause: FilterClause,
+  now: number,
+  foldersOfProject?: (projectId: ID) => ID | undefined,
+): boolean {
   const c = clause
   switch (c.kind) {
     case 'project':
       return task.projectId === c.id
+    case 'folder':
+      // A folder question is a question about its projects, not a second place
+      // a task can live.
+      return !!task.projectId && foldersOfProject?.(task.projectId) === c.id
     case 'label':
       return task.labelIds.includes(c.id)
     case 'priority':
@@ -53,23 +62,39 @@ export function clauseHolds(task: Task, clause: FilterClause, now: number): bool
 }
 
 /** Does this task answer the filter? */
-export function matchesFilter(task: Task, filter: TaskFilter, now: number): boolean {
-  return filter.clauses.every((c) => clauseHolds(task, c, now))
+export function matchesFilter(
+  task: Task,
+  filter: TaskFilter,
+  now: number,
+  foldersOfProject?: (projectId: ID) => ID | undefined,
+): boolean {
+  return filter.clauses.every((c) => clauseHolds(task, c, now, foldersOfProject))
 }
 
 /** The tasks that answer the filter, unfinished first. */
-export function filterTasks(tasks: Task[], filter: TaskFilter, now: number): Task[] {
-  return tasks.filter((t) => !t.completed && matchesFilter(t, filter, now))
+export function filterTasks(
+  tasks: Task[],
+  filter: TaskFilter,
+  now: number,
+  foldersOfProject?: (projectId: ID) => ID | undefined,
+): Task[] {
+  return tasks.filter((t) => !t.completed && matchesFilter(t, filter, now, foldersOfProject))
 }
 
 /** A short human phrase for one clause, for chips and tooltips. */
 export function describeClause(
   clause: FilterClause,
-  names: { projects: Record<string, string>; labels: Record<string, string> },
+  names: {
+    projects: Record<string, string>
+    labels: Record<string, string>
+    folders?: Record<string, string>
+  },
 ): string {
   switch (clause.kind) {
     case 'project':
       return `#${names.projects[clause.id] ?? 'unknown'}`
+    case 'folder':
+      return `in ${names.folders?.[clause.id] ?? 'an unknown folder'}`
     case 'label':
       return `@${names.labels[clause.id] ?? 'unknown'}`
     case 'priority':
@@ -84,6 +109,11 @@ export function describeClause(
 }
 
 /** Total minutes of clock the filter's answers will ask for. */
-export function filterMinutes(tasks: Task[], filter: TaskFilter, now: number): number {
-  return filterTasks(tasks, filter, now).reduce((a, t) => a + plannedMinutes(t) * MIN, 0)
+export function filterMinutes(
+  tasks: Task[],
+  filter: TaskFilter,
+  now: number,
+  foldersOfProject?: (projectId: ID) => ID | undefined,
+): number {
+  return filterTasks(tasks, filter, now, foldersOfProject).reduce((a, t) => a + plannedMinutes(t) * MIN, 0)
 }
