@@ -82,6 +82,8 @@ text never silently moves the block.
 - **Quick capture** parses `#project`, `@label`, `!1`–`!4`, `tomorrow`, `at 9:30`, `for 45m`, `every tue`, and shows a live reading of what it understood. Typed times may be 12- or 24-hour; everything Tempo *shows* is 24-hour, including the time fields — there is no native time input left in the app.
 - **Views**: day, week, month, agenda (7/14/21 days), inbox/today/upcoming lists, saved
   filters, focus, Eisenhower matrix, project board, habits, notes, review.
+- **Folders** group projects one level deep in the sidebar. Right-click a project to file it
+  somewhere else, and a saved filter can ask for "everything in Work".
 - **Repeating meetings** — set a repeat rule in the event panel and the occurrences are
   issued as real entries on the calendar. Moving or cancelling one leaves the rest alone;
   changing the time or deleting asks whether you meant this one, this and future, or the
