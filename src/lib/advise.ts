@@ -1,5 +1,5 @@
 import type { Settings, Task } from '@/types'
-import { MIN, addDays, atMinutes, daysBetween, fromKey, toKey } from './date'
+import { MIN, addDays, daysBetween, fromKey, toKey } from './date'
 
 /**
  * What to do right now.
@@ -24,14 +24,14 @@ const W_COMMITMENT = 12
 /** Deadline pressure: full weight at today or overdue, gone in a fortnight. */
 function deadlineScore(due: string | undefined, now: number): number {
   if (!due) return W_DEADLINE * 0.25 // due some day, just not written down
-  const left = daysBetween(now, atMinutes(fromKey(due), 24 * 60))
+  const left = daysBetween(now, fromKey(due))
   const decay = Math.max(0, Math.min(1, (14 - left) / 14))
   return W_DEADLINE * decay
 }
 
 /** The hour this kind of work does its best, in minutes from midnight. */
 function idealHour(task: Task): number {
-  if (task.dayPart !== 'any') {
+  if (task.dayPart && task.dayPart !== 'any') {
     return { morning: 9 * 60, afternoon: 13 * 60 + 30, evening: 19 * 60 }[task.dayPart]
   }
   return { deep: 9 * 60 + 30, shallow: 11 * 60, admin: 16 * 60 }[task.energy]
@@ -50,7 +50,7 @@ function energyScore(task: Task, settings: Settings, now: number): number {
 
 function deadlinePhrase(due: string | undefined, now: number): string {
   if (!due) return 'no date set'
-  const left = daysBetween(now, atMinutes(fromKey(due), 24 * 60))
+  const left = daysBetween(now, fromKey(due))
   if (left <= 0) return left === 0 ? 'due today' : 'overdue'
   if (left === 1) return 'due tomorrow'
   if (left < 7) return `due in ${left} days`
