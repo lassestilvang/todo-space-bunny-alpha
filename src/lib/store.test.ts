@@ -151,6 +151,39 @@ describe('keeping the plan true', () => {
     expect(s.getState().tasks[floating.id].scheduled).toBeNull()
   })
 
+  it('does not make one visible action cost two undos', async () => {
+    // A drag displaces a block; the calendar re-fits it. That is one visible
+    // change, so one undo has to put both back.
+    const moving = placed(task({ title: 'Moving' }), 14, 15)
+    const displaced = placed(task({ title: 'Displaced' }), 15, 16)
+    const s = await worldWith([moving, displaced])
+    const before = s.getState().tasks
+
+    // What the drag does...
+    s.getState().updateTask(moving.id, {
+      scheduled: { start: at(15), end: at(16) },
+      planLocked: true,
+    })
+    // ...and then the calendar answers.
+    const report = s.getState().refitRange(DAY, 7)
+    expect(report.moved).toBe(1)
+    expect(s.getState().tasks[displaced.id].scheduled).not.toEqual(before[displaced.id].scheduled)
+
+    s.getState().undo()
+    expect(s.getState().tasks[moving.id].scheduled).toEqual(before[moving.id].scheduled)
+    expect(s.getState().tasks[displaced.id].scheduled).toEqual(before[displaced.id].scheduled)
+  })
+
+  it('records the refit on its own when nothing else has', async () => {
+    // Nothing pushed history, so the refit must be undoable by itself.
+    const stranded = placed(task({ title: 'Stranded' }), 14, 15)
+    const s = await worldWith([stranded], [event({ start: at(14), end: at(16) })])
+    const before = s.getState().tasks[stranded.id].scheduled
+    s.getState().refitRange(DAY, 7)
+    s.getState().undo()
+    expect(s.getState().tasks[stranded.id].scheduled).toEqual(before)
+  })
+
   it('undoes the whole refit in one step', async () => {
     const doomed = placed(task(), 14, 15)
     const s = await worldWith([doomed], [event({ start: at(14), end: at(16) })])
