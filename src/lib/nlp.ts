@@ -222,7 +222,9 @@ addRule(
     const mer = m[5]?.toLowerCase()
     const start = minutesFromMeridiem(Number(m[1]), Number(m[2] || 0), mer)
     let end = minutesFromMeridiem(Number(m[3]), Number(m[4] || 0), mer)
-    if (end <= start) end += 12 * 60
+    // A 24-hour range that wraps (23:30–00:30) gains a day; a pair of bare
+    // hours that reads backwards ("11-1") is a half-day apart.
+    if (end <= start) end += start >= 12 * 60 ? 24 * 60 : 12 * 60
     c.pendingTime = start
     c.rangeMinutes = end - start
     c.timeHasMeridiem = !!mer
@@ -233,7 +235,12 @@ addRule(
 
 /* --- clock times --- */
 addRule(/\bat\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b/y, (c, m) => {
-  c.pendingTime = minutesFromMeridiem(Number(m[1]), Number(m[2] || 0), m[3]?.toLowerCase())
+  const h = Number(m[1])
+  const min = Number(m[2] || 0)
+  // "at 25:00" is not a time, so it stays part of the title rather than wrapping
+  // to an hour the user never asked for.
+  if (h > 24 || min > 59) return null
+  c.pendingTime = minutesFromMeridiem(h, min, m[3]?.toLowerCase())
   c.timeHasMeridiem = !!m[3]
   mark(c, 'time', m)
   return 1
@@ -245,6 +252,7 @@ addRule(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b/y, (c, m) => {
   return 1
 })
 addRule(/(?<!\d)(\d{1,2}):(\d{2})(?!\d)/y, (c, m) => {
+  if (Number(m[1]) > 24 || Number(m[2]) > 59) return null
   c.pendingTime = Number(m[1]) * 60 + Number(m[2])
   c.timeHasMeridiem = true
   mark(c, 'time', m)
