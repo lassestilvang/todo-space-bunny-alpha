@@ -14,6 +14,15 @@ more truthful, more drivable, or more honest about time is out of scope.
 
 ## Now
 
+**The drag geometry, extracted and tested** — `done`. Every number a drag depends on now
+lives in `src/lib/grid.ts` as plain arithmetic, and the component calls it. The function that
+locates the pointer takes no scroll argument at all, which is the point: the original
+scroll-double-count bug could not survive a signature that has nowhere to put a second
+scroll. Fifteen tests cover it, including the invariant that matters most — a block travels
+exactly as far as the pointer does *however the cascade has stacked it* — and they found one
+real edge case, a zero snap step dividing by zero. Re-verified in the browser afterwards:
+dragging one hour moves a block one hour, before and after scrolling the grid.
+
 **Tests for the store and the calendar's arithmetic** — `done`. The pure functions were
 covered first; this pass reached the two layers below them. Twenty-eight store tests over the
 refit, series scopes, subtask resizing and folder deletion, plus fourteen date tests over
@@ -125,12 +134,12 @@ never move, and nothing new gets scheduled. See README → *Keeping the plan tru
 
 Not features — things that are wrong or missing and should not be forgotten.
 
-- 125 tests cover the planner, the capture parser, the clock, the date arithmetic, saved
-  filters, deadline risk, the focus accounting, the adviser, the room proposals and the
-  store (`npm test`). The React surfaces are still not covered: `scripts/verify.mjs` only
-  proves fifteen views render without a console error. Drag state, the detail panel and
-  the modals remain untested, and the scroll-double-count bug that broke every drag lived
-  exactly there — it is the first thing to cover.
+- 140 tests cover the planner, the capture parser, the clock, the date arithmetic, the drag
+  geometry, saved filters, deadline risk, the focus accounting, the adviser, the room
+  proposals and the store (`npm test`). What is still uncovered is the React layer itself:
+  `scripts/verify.mjs` only proves fifteen views render without a console error. The detail
+  panel, the modals and the pointer-event choreography in `TimeGrid` are untested — though
+  the arithmetic under the pointer now is, which is where the worst bug lived.
 - The assistant negotiates about *today* only. "Free up an hour tomorrow morning" is read
   as today, which is the wrong answer rather than a refusal — worth a day parameter before
   anyone relies on it.
