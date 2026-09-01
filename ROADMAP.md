@@ -14,6 +14,16 @@ more truthful, more drivable, or more honest about time is out of scope.
 
 ## Now
 
+**"Free up an hour"** — `done`. "Free up an hour at 14:00" is a question about where to
+give up time, not an instruction, so it is answered with proposals instead of a mutation.
+`src/lib/room.ts` reads the requested length and window ("an hour", "90 minutes", "this
+afternoon", "at 15:00"), finds the planner-owned blocks sitting in the way, and offers up
+to three ways out — move the least important one to the first opening after the window,
+take it off the clock entirely, or shorten it to what fits. Nothing is written until you
+pick one; applying a choice is a single undoable step, and the transcript records what you
+chose. When nothing is in the way it says so and names the largest opening instead of
+inventing work.
+
 **A 24-hour time field** — `done`. The native `input[type=time]` rendered in the browser's
 locale, so the same build asked one person for "2:30 PM" and another for "14:30" while the
 rest of Tempo insisted on 24-hour. There is now no native time input anywhere in the app:
@@ -89,21 +99,7 @@ never move, and nothing new gets scheduled. See README → *Keeping the plan tru
 
 ## Bigger, later
 
-### 1. "Free up an hour" — L
-
-From Ellie. The assistant is seven intents deep: add, schedule, unschedule,
-complete, delete, priority, plan. It can execute but cannot negotiate.
-
-- Turn a request into a *plan diff* with two or three named options, not a
-  single silent mutation.
-- "Free up an hour this afternoon" should offer: move X to 16:00, drop Y, or
-  shorten Z to 45 minutes — each previewed, each individually undoable.
-- Reuses the planner rather than adding a second scheduler.
-
-**Done when** a vague request returns options with previews, and applying one is a
-single undoable step that shows exactly what moved.
-
-### 2. Folders — M
+### 1. Folders — M
 
 From Todoist sections and TickTick lists. Projects are flat.
 
@@ -123,8 +119,11 @@ Not features — things that are wrong or missing and should not be forgotten.
 - No unit tests. `scripts/verify.mjs` covers rendering and console cleanliness only
   (fifteen surfaces now, including Focus). Time formatting and the clock parser are now
   pure functions in `src/lib/clock.ts`, which makes them easy to cover.
-  The planner and the NLP parser are pure functions and are the first things worth
-  testing properly.
+  The planner, the NLP parser and `src/lib/room.ts` are pure functions and are the first
+  things worth testing properly.
+- The assistant negotiates about *today* only. "Free up an hour tomorrow morning" is read
+  as today, which is the wrong answer rather than a refusal — worth a day parameter before
+  anyone relies on it.
 - Saved filters cover project, label, priority, due window, on-the-clock and energy.
   The brief also mentioned driving "the capture bar's default view"; that clause is not
   implemented, because nothing in the capture flow wanted a saved filter and inventing one
