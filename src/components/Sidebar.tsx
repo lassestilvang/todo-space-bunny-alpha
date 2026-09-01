@@ -6,6 +6,7 @@ import {
   Columns3,
   FileText,
   Filter,
+  FolderPlus,
   Flame,
   Hash,
   Inbox,
@@ -16,16 +17,18 @@ import {
   Sun,
   Target,
   Timer,
+  X,
   TrendingUp,
 } from 'lucide-react'
 import { useStore } from '@/lib/store'
-import type { ViewId } from '@/types'
+import type { Project, ViewId } from '@/types'
 import { cn, smartList } from '@/lib/selectors'
 import { addDays, toKey } from '@/lib/date'
 import { riskReport } from '@/lib/risk'
 import { matchesFilter } from '@/lib/filters'
 import { Btn, IconBtn, MenuItem, Modal, Popover, usePopover } from './ui'
 import { PomodoroWidget } from './Pomodoro'
+import { useContextMenu } from './ContextMenu'
 import { FilterEditor } from './FilterEditor'
 
 type NavItem = {
@@ -76,6 +79,10 @@ export function Sidebar() {
   const setView = useStore((s) => s.setView)
   const tasks = useStore((s) => s.tasks)
   const projects = useStore((s) => s.projects)
+  const folders = useStore((s) => s.folders)
+  const addFolder = useStore((s) => s.addFolder)
+  const deleteFolder = useStore((s) => s.deleteFolder)
+  const updateProject = useStore((s) => s.updateProject)
   const labels = useStore((s) => s.labels)
   const activeProject = useStore((s) => s.ui.activeProject)
   const setActiveProject = useStore((s) => s.setActiveProject)
@@ -88,6 +95,8 @@ export function Sidebar() {
   const setFilter = useStore((s) => s.setFilter)
   const [editFilter, setEditFilter] = useState<string | null | undefined>(undefined)
   const [newProject, setNewProject] = useState(false)
+  const [newFolder, setNewFolder] = useState(false)
+  const [folderName, setFolderName] = useState('')
   const [projectName, setProjectName] = useState('')
   const [glyph, setGlyph] = useState('◆')
   const [colorIdx, setColorIdx] = useState(0)
@@ -112,7 +121,67 @@ export function Sidebar() {
     () => Object.values(projects).filter((p) => !p.archived).sort((a, b) => a.order - b.order),
     [projects],
   )
+
+  /** One project line: click to scope the board, right-click to file it away. */
+  const projectRow = (p: Project) => {
+    const n = allTasks.filter((t) => t.projectId === p.id && !t.completed).length
+    const active = activeProject === p.id
+    return (
+      <button
+        key={p.id}
+        onClick={() => {
+          setActiveProject(active ? 'all' : p.id)
+          setView('kanban')
+        }}
+        onContextMenu={(e) => {
+          e.preventDefault()
+          menu.show(
+            e,
+            [
+              { kind: 'label', text: 'Move to folder' },
+              ...folderList.map((f) => ({
+                kind: 'item' as const,
+                label: p.folderId === f.id ? `${f.name} (here)` : f.name,
+                onSelect: () => updateProject(p.id, { folderId: f.id }),
+              })),
+              {
+                kind: 'item',
+                label: p.folderId ? 'No folder' : 'No folder (here)',
+                onSelect: () => updateProject(p.id, { folderId: undefined }),
+              },
+            ],
+          )
+        }}
+        title={collapsed ? p.name : undefined}
+        className={cn(
+          'press group flex w-full items-center gap-2 rounded-[var(--radius-md)] px-2 py-[6px] text-left text-[12.5px]',
+          active ? 'bg-surface-3 text-ink' : 'text-ink-2 hover:bg-surface-2 hover:text-ink',
+        )}
+      >
+        <span
+          className="grid size-[18px] shrink-0 place-items-center rounded-[5px] text-[10px]"
+          style={{
+            background: `color-mix(in oklab, var(--color-${p.color}) 20%, transparent)`,
+            color: `var(--color-${p.color})`,
+          }}
+        >
+          {p.glyph}
+        </span>
+        {!collapsed && (
+          <>
+            <span className="min-w-0 flex-1 truncate">{p.name}</span>
+            {n > 0 && <span className="tnum text-[10.5px] text-ink-4">{n}</span>}
+          </>
+        )}
+      </button>
+    )
+  }
   const labelList = useMemo(() => Object.values(labels), [labels])
+  const folderList = useMemo(
+    () => Object.values(folders).filter((f) => !f.archived).sort((a, b) => a.order - b.order),
+    [folders],
+  )
+  const menu = useContextMenu()
   const filterList = useMemo(
     () => Object.values(filters).sort((a, b) => a.order - b.order),
     [filters],
@@ -121,10 +190,13 @@ export function Sidebar() {
     const out: Record<string, number> = {}
     const now = Date.now()
     for (const f of filterList) {
-      out[f.id] = Object.values(tasks).filter((t) => !t.completed && matchesFilter(t, f, now)).length
+      const folderOf = (projectId: string) => projects[projectId]?.folderId
+      out[f.id] = Object.values(tasks).filter(
+        (t) => !t.completed && matchesFilter(t, f, now, folderOf),
+      ).length
     }
     return out
-  }, [filterList, tasks])
+  }, [filterList, tasks, projects])
 
   const countFor = (id: ViewId): number | null => {
     if (id === 'inbox') return counts.inbox
@@ -231,52 +303,70 @@ export function Sidebar() {
           title={collapsed ? '' : 'Projects'}
           action={
             !collapsed ? (
-              <IconBtn label="New project" onClick={() => setNewProject(true)}>
-                <Plus size={13} />
-              </IconBtn>
+              <>
+                <IconBtn label="New folder" onClick={() => setNewFolder(true)}>
+                  <FolderPlus size={13} />
+                </IconBtn>
+                <IconBtn label="New project" onClick={() => setNewProject(true)}>
+                  <Plus size={13} />
+                </IconBtn>
+              </>
             ) : undefined
           }
         >
-          {projectList.map((p) => {
-            const n = allTasks.filter((t) => t.projectId === p.id && !t.completed).length
-            const active = activeProject === p.id
+          {folderList.map((f) => {
+            const inside = projectList.filter((p) => p.folderId === f.id)
+            if (!inside.length) return null
             return (
-              <button
-                key={p.id}
-                onClick={() => {
-                  setActiveProject(active ? 'all' : p.id)
-                  setView('kanban')
-                }}
-                title={collapsed ? p.name : undefined}
-                className={cn(
-                  'press group flex w-full items-center gap-2 rounded-[var(--radius-md)] px-2 py-[6px] text-left text-[12.5px]',
-                  active ? 'bg-surface-3 text-ink' : 'text-ink-2 hover:bg-surface-2 hover:text-ink',
-                )}
-              >
-                <span
-                  className="grid size-[18px] shrink-0 place-items-center rounded-[5px] text-[10px]"
-                  style={{
-                    background: `color-mix(in oklab, var(--color-${p.color}) 20%, transparent)`,
-                    color: `var(--color-${p.color})`,
-                  }}
-                >
-                  {p.glyph}
-                </span>
+              <div key={f.id} className="mb-1">
                 {!collapsed && (
-                  <>
-                    <span className="min-w-0 flex-1 truncate">{p.name}</span>
-                    {n > 0 && <span className="tnum text-[10.5px] text-ink-4">{n}</span>}
-                  </>
+                  <div className="group flex items-center gap-1 px-2 pb-0.5 pt-1">
+                    <span className="min-w-0 flex-1 truncate text-[9.5px] font-semibold uppercase tracking-[0.14em] text-ink-4">
+                      {f.name}
+                    </span>
+                    <button
+                      aria-label={`Delete ${f.name}`}
+                      onClick={() => deleteFolder(f.id)}
+                      className="press rounded-[5px] p-[3px] text-ink-4 opacity-0 transition-opacity hover:bg-surface-3 hover:text-bad focus-visible:opacity-100 group-hover:opacity-100"
+                    >
+                      <X size={10} />
+                    </button>
+                  </div>
                 )}
-              </button>
+                {inside.map((p) => projectRow(p))}
+              </div>
             )
           })}
-          {projectList.length === 0 && !collapsed && (
+          {(() => {
+            const loose = projectList.filter((p) => !p.folderId)
+            if (!loose.length) return null
+            return (
+              <div className="mb-1">
+                {!collapsed && folderList.length > 0 && (
+                  <div className="px-2 pb-0.5 pt-1 text-[9.5px] font-semibold uppercase tracking-[0.14em] text-ink-4">
+                    Elsewhere
+                  </div>
+                )}
+                {loose.map((p) => projectRow(p))}
+              </div>
+            )
+          })()}
+          {projectList.length === 0 &&
+            !collapsed &&
+            (
+              <button
+                onClick={() => setNewProject(true)}
+                className="w-full rounded-[var(--radius-md)] px-2 py-2 text-left text-[12px] text-ink-4 hover:text-ink-2"
+              >
+                No projects yet — create one
+              </button>
+            )}
+          {folderList.length === 0 && projectList.length > 0 && !collapsed && (
             <button
-              onClick={() => setNewProject(true)}
-              className="w-full rounded-[var(--radius-md)] px-2 py-2 text-left text-[12px] text-ink-4 hover:text-ink-2"
+              onClick={() => setNewFolder(true)}
+              className="w-full rounded-[var(--radius-md)] px-2 py-1.5 text-left text-[11px] text-ink-4 hover:text-ink-2"
             >
-              No projects yet — create one
+              Group these into a folder
             </button>
           )}
         </Group>
@@ -337,6 +427,52 @@ export function Sidebar() {
       {editFilter !== undefined && (
         <FilterEditor filterId={editFilter} onClose={() => setEditFilter(undefined)} />
       )}
+
+      <Modal
+        open={newFolder}
+        onClose={() => setNewFolder(false)}
+        title="New folder"
+        width={380}
+        footer={
+          <>
+            <Btn onClick={() => setNewFolder(false)}>Cancel</Btn>
+            <Btn
+              variant="primary"
+              disabled={!folderName.trim()}
+              onClick={() => {
+                addFolder({ name: folderName.trim() })
+                setFolderName('')
+                setNewFolder(false)
+              }}
+            >
+              Create
+            </Btn>
+          </>
+        }
+      >
+        <div className="p-4 pt-0">
+          <input
+            autoFocus
+            value={folderName}
+            onChange={(e) => setFolderName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && folderName.trim()) {
+                addFolder({ name: folderName.trim() })
+                setFolderName('')
+                setNewFolder(false)
+              }
+            }}
+            placeholder="e.g. Work"
+            className="h-9 w-full rounded-[var(--radius-md)] border border-line bg-surface-2 px-3 text-[13px] text-ink outline-none placeholder:text-ink-4 focus:border-line-strong"
+          />
+          <p className="mt-2 text-[10.5px] leading-snug text-ink-4">
+            A folder groups projects in the sidebar. Right-click a project to move it between
+            folders.
+          </p>
+        </div>
+      </Modal>
+
+      {menu.node}
 
       <Modal
         open={newProject}
