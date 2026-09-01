@@ -789,9 +789,25 @@ export const useStore = create<State & Actions>()(
         }
 
         if (moved === 0 && dropped === 0) return { moved: 0, dropped: 0, days: [] }
+
+        // A refit is the *consequence* of whatever the user just did, and that
+        // change has usually recorded history already. Pushing again would make
+        // one visible action cost two undos, with the first apparently doing
+        // nothing. So only record it when nothing else has.
+        const top = s.history.past[s.history.past.length - 1]
+        const recorded = top
+          ? Object.keys(s.tasks).some(
+              (id) =>
+                (s.tasks[id]?.scheduled?.start ?? null) !==
+                (top.tasks[id]?.scheduled?.start ?? null),
+            )
+          : false
+
         set({
           tasks,
-          history: { past: [...s.history.past, snapshot(s)].slice(-HISTORY_LIMIT), future: [] },
+          history: recorded
+            ? { past: s.history.past, future: [] }
+            : { past: [...s.history.past, snapshot(s)].slice(-HISTORY_LIMIT), future: [] },
         })
         return { moved, dropped, days: [...changed] }
       },
