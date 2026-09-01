@@ -13,6 +13,7 @@ import type { CalendarItem } from '@/types'
 import { MIN, atMinutes, clamp, fmtTime, isToday, snap } from '@/lib/date'
 import { cn, type Positioned } from '@/lib/selectors'
 import { activeItemPayload, hasItemPayload, readItemPayload, type DropPayload } from '@/lib/drag'
+import { blockStart, columnAt, pointerFrame } from '@/lib/grid'
 import { riskForItem, riskTitle } from '@/lib/risk'
 import { metaFrom, nameMaps, type ResolvedMeta } from '@/lib/capture'
 import { parseInput } from '@/lib/nlp'
@@ -176,11 +177,16 @@ export function TimeGrid({
       // `rect.top` is the column's *current* viewport top, so it already carries
       // the scroll: adding scroll.scrollTop here would displace every drag.
       const rect = cols.getBoundingClientRect()
-      const colWidth = rect.width / days.length
-      const dayIndex = clamp(Math.floor((e.clientX - rect.left) / colWidth), 0, days.length - 1)
+      const dayIndex = columnAt(e.clientX, rect.left, rect.width, days.length)
       // A cascaded block is drawn `down` pixels below its own start time, so
       // subtract that here or every drag of a stacked block jumps by its offset.
-      const raw = gridStart + (e.clientY - rect.top - d.down) / pxPerMin
+      const raw = pointerFrame({
+        clientY: e.clientY,
+        columnTop: rect.top,
+        pxPerMin,
+        gridStart,
+        cascadeDownPx: d.down,
+      })
 
       const origin = dragOrigin.current
       if (origin && (Math.abs(e.clientX - origin.x) > 3 || Math.abs(e.clientY - origin.y) > 3)) {
@@ -207,13 +213,34 @@ export function TimeGrid({
       )
       const ownStart = (item.start - atMinutes(days[ownDay], 0)) / MIN
       if (d.mode === 'move') {
-        const start = clamp(snap(raw - d.grabOffsetMin, snapMin), gridStart, gridEnd - dur)
+        const start = blockStart({
+          pointerMinutes: raw,
+          grabOffsetMin: d.grabOffsetMin,
+          snapMin,
+          gridStart,
+          gridEnd,
+          durationMin: dur,
+        })
         setPreview({ day: dayIndex, start, end: start + dur })
       } else if (d.mode === 'resize-start') {
-        const start = clamp(snap(raw, snapMin), gridStart, ownStart + dur - MIN_BLOCK)
+        const start = blockStart({
+          pointerMinutes: raw,
+          grabOffsetMin: 0,
+          snapMin,
+          gridStart,
+          gridEnd: ownStart + dur - MIN_BLOCK,
+          durationMin: MIN_BLOCK,
+        })
         setPreview({ day: ownDay, start, end: ownStart + dur })
       } else {
-        const end = clamp(snap(raw, snapMin), ownStart + MIN_BLOCK, gridEnd)
+        const end = blockStart({
+          pointerMinutes: raw,
+          grabOffsetMin: 0,
+          snapMin,
+          gridStart: ownStart + MIN_BLOCK,
+          gridEnd,
+          durationMin: MIN_BLOCK,
+        }) + MIN_BLOCK
         setPreview({ day: ownDay, start: ownStart, end })
       }
 
@@ -320,9 +347,14 @@ export function TimeGrid({
 
   /** Snapped drop time that keeps the whole block inside the visible grid. */
   function dropStartAt(clientY: number, el: HTMLElement, minutes: number): number {
-    const snapped = snap(minutesAt(clientY, el), snapMin)
-    const last = Math.max(gridStart, gridEnd - minutes)
-    return clamp(snapped, gridStart, last)
+    return blockStart({
+      pointerMinutes: minutesAt(clientY, el),
+      grabOffsetMin: 0,
+      snapMin,
+      gridStart,
+      gridEnd,
+      durationMin: minutes,
+    })
   }
 
   return (
