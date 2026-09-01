@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { CornerDownLeft, Eraser, Settings2, Sparkles, Undo2 } from 'lucide-react'
+import { ArrowRight, CornerDownLeft, Eraser, Settings2, Sparkles, Undo2 } from 'lucide-react'
 import { useStore } from '@/lib/store'
-import { applyActions, respond } from '@/lib/assistant'
+import { applyActions, respond, type AssistantAction } from '@/lib/assistant'
 import { cn } from '@/lib/selectors'
 import { IconBtn, Kbd, Modal } from './ui'
 
@@ -36,6 +36,17 @@ export function Assistant() {
 
   if (!open) return null
 
+  /** Apply one of the assistant's proposals and retire the rest. */
+  const chooseOption = (messageId: string, option: { id: string; label: string; detail: string; action: unknown }) => {
+    const applied = applyActions([option.action as AssistantAction])
+    patch(messageId, {
+      options: undefined,
+      applied: applied.length ? applied : undefined,
+      content: `${useStore.getState().chat.find((m) => m.id === messageId)?.content ?? ''}\n\nYou chose: ${option.label}.`.trim(),
+    })
+    inputRef.current?.focus()
+  }
+
   const send = async (raw?: string) => {
     const q = (raw ?? text).trim()
     if (!q || busy) return
@@ -55,6 +66,7 @@ export function Assistant() {
         content: answer.reply,
         pending: false,
         applied: applied.length ? applied : undefined,
+        options: answer.options,
       })
     } catch (err) {
       patch(id, {
@@ -151,6 +163,26 @@ export function Assistant() {
                 </span>
               ) : (
                 m.content
+              )}
+
+              {m.options && m.options.length > 0 && (
+                <div className="mt-2 space-y-1.5">
+                  {m.options.map((o) => (
+                    <button
+                      key={o.id}
+                      onClick={() => chooseOption(m.id, o)}
+                      className="press w-full rounded-[var(--radius-md)] border border-line bg-surface-2 px-2.5 py-2 text-left hover:border-signal/45 hover:bg-surface-3"
+                    >
+                      <div className="flex items-center gap-1.5 text-[12px] font-medium text-ink">
+                        <ArrowRight size={11} className="shrink-0 text-signal" />
+                        {o.label}
+                      </div>
+                      <div className="mt-0.5 pl-[17px] text-[10.5px] leading-snug text-ink-4">
+                        {o.detail}
+                      </div>
+                    </button>
+                  ))}
+                </div>
               )}
 
               {m.applied && m.applied.length > 0 && (
