@@ -53,8 +53,18 @@ export const endOfDay = (d: Date | number): Date =>
     ? new Date(new Date(d).setHours(23, 59, 59, 999))
     : new Date(d.setHours(23, 59, 59, 999))
 
-export const addDays = (d: Date | number, n: number): Date =>
-  typeof d === 'number' ? new Date(d + n * DAY) : new Date(d.getTime() + n * DAY)
+/**
+ * Move by calendar days, not by elapsed milliseconds.
+ *
+ * Adding 24 hours crosses a daylight-saving boundary as 23 or 25, so every
+ * weekly recurrence would drift an hour twice a year. `setDate` keeps the
+ * wall-clock time the day had.
+ */
+export const addDays = (d: Date | number, n: number): Date => {
+  const x = new Date(typeof d === 'number' ? d : d.getTime())
+  x.setDate(x.getDate() + n)
+  return x
+}
 
 export const addMinutes = (t: number, n: number): number => t + n * MIN
 
@@ -105,9 +115,16 @@ export const minOfDay = (t: Date | number): number => {
   return d.getHours() * 60 + d.getMinutes()
 }
 
+/**
+ * A wall-clock time on a given local day.
+ *
+ * Midnight plus N milliseconds is wrong on a day that is 23 or 25 hours long, so
+ * the hour and minute are set instead of added.
+ */
 export const atMinutes = (day: Date | number, minutes: number): number => {
-  const d0 = startOfDay(day)
-  return d0.getTime() + minutes * MIN
+  const x = new Date(startOfDay(day))
+  x.setHours(Math.floor(minutes / 60), minutes % 60, 0, 0)
+  return x.getTime()
 }
 
 export const snap = (minutes: number, step: number): number => Math.round(minutes / step) * step
