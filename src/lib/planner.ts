@@ -158,6 +158,14 @@ export function blockConflicts(input: PlannerInput, task: Task): boolean {
   return fixed.some((iv) => from < iv.end && to > iv.start)
 }
 
+/**
+ * What cannot move on this day: meetings, habit anchors and blocks the user
+ * placed by hand. Used both by the refit and by "make room" proposals.
+ */
+export function fixedBusy(input: PlannerInput, day: Date): Interval[] {
+  return busyForDay(input, day, { ...DEFAULT_PLAN_OPTIONS, refit: true })
+}
+
 function habitFallsOn(h: Habit, day: Date): boolean {
   if (h.cadence === 'daily') return true
   if (h.cadence === 'weekdays') return day.getDay() >= 1 && day.getDay() <= 5
