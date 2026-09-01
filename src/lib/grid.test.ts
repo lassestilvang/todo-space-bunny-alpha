@@ -121,6 +121,15 @@ describe('where a dragged block lands', () => {
     )
   })
 
+  it('clamps a bare point on the clock, without a minimum length', () => {
+    // An edge being dragged is a point, not a span: clamping it with a minimum
+    // duration would push the edge by that minimum every time.
+    const point = { ...base, durationMin: 0 }
+    expect(blockStart({ ...point, pointerMinutes: 9 * 60, grabOffsetMin: 0 })).toBe(9 * 60)
+    expect(blockStart({ ...point, pointerMinutes: 5 * 60, grabOffsetMin: 0 })).toBe(GRID_START)
+    expect(blockStart({ ...point, pointerMinutes: 23 * 60, grabOffsetMin: 0 })).toBe(GRID_END)
+  })
+
   it('cannot be dragged off the far end, however long the block', () => {
     const start = blockStart({
       ...base,
