@@ -5,6 +5,7 @@ import type {
   ChatMessage,
   Doc,
   FocusSession,
+  Folder,
   Habit,
   ID,
   Label,
@@ -39,6 +40,7 @@ type Entities = {
   habits: Record<ID, Habit>
   docs: Record<ID, Doc>
   projects: Record<ID, Project>
+  folders: Record<ID, Folder>
   labels: Record<ID, Label>
   filters: Record<ID, TaskFilter>
 }
@@ -78,7 +80,16 @@ type State = Entities & {
 
 type NewTask = Partial<Task> & { title: string }
 
-const ENTITIES: (keyof Entities)[] = ['tasks', 'events', 'habits', 'docs', 'projects', 'labels', 'filters']
+const ENTITIES: (keyof Entities)[] = [
+  'tasks',
+  'events',
+  'habits',
+  'docs',
+  'projects',
+  'folders',
+  'labels',
+  'filters',
+]
 
 const snapshot = (s: State): Snapshot => ({
   tasks: s.tasks,
@@ -86,6 +97,7 @@ const snapshot = (s: State): Snapshot => ({
   habits: s.habits,
   docs: s.docs,
   projects: s.projects,
+  folders: s.folders,
   labels: s.labels,
   filters: s.filters,
 })
@@ -116,6 +128,10 @@ type Actions = {
 
   /* projects */
   addProject: (p: Partial<Project> & { name: string }) => ID
+  addFolder: (f: Partial<Folder> & { name: string }) => ID
+  updateFolder: (id: ID, patch: Partial<Folder>) => void
+  /** Deleting a folder keeps its projects; it only loses its home. */
+  deleteFolder: (id: ID) => void
   updateProject: (id: ID, patch: Partial<Project>) => void
   deleteProject: (id: ID) => void
   archiveProject: (id: ID, archived: boolean) => void
@@ -497,6 +513,7 @@ export const useStore = create<State & Actions>()(
               color: p.color ?? 'c-sky',
               glyph: p.glyph ?? '◆',
               goal: p.goal,
+              folderId: p.folderId,
               archived: p.archived ?? false,
               order: p.order ?? nextOrder(s.projects),
               createdAt: Date.now(),
@@ -506,6 +523,44 @@ export const useStore = create<State & Actions>()(
         }))
         return id
       },
+      /* ------------------------------ folders ------------------------------- */
+      addFolder: (f) => {
+        const id = f.id ?? uid('fo')
+        set((s) => ({
+          folders: {
+            ...s.folders,
+            [id]: {
+              id,
+              name: f.name,
+              order: f.order ?? nextOrder(s.folders),
+              archived: f.archived ?? false,
+            },
+          },
+          history: pushHistory(s),
+        }))
+        return id
+      },
+      updateFolder: (id, patch) =>
+        set((s) => {
+          if (!s.folders[id]) return {}
+          return {
+            folders: { ...s.folders, [id]: { ...s.folders[id], ...patch, id } },
+            history: pushHistory(s),
+          }
+        }),
+      deleteFolder: (id) =>
+        set((s) => {
+          if (!s.folders[id]) return {}
+          const folders = { ...s.folders }
+          delete folders[id]
+          // The projects survive; they simply have nowhere to be filed.
+          const projects = Object.fromEntries(
+            Object.entries(s.projects).map(([pid, p]) =>
+              p.folderId === id ? [pid, { ...p, folderId: undefined }] : [pid, p],
+            ),
+          )
+          return { folders, projects, history: pushHistory(s) }
+        }),
       updateProject: (id, patch) =>
         set((s) => ({
           projects: { ...s.projects, [id]: { ...s.projects[id], ...patch } },
@@ -887,6 +942,7 @@ export const useStore = create<State & Actions>()(
         habits: s.habits,
         docs: s.docs,
         projects: s.projects,
+        folders: s.folders,
         labels: s.labels,
         filters: s.filters,
         sessions: s.sessions,
