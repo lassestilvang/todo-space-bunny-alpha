@@ -272,6 +272,143 @@ const run = async () => {
     check('one undo puts a dragged block back', before === after, `${moved} -> ${after}`)
   })
 
+  console.log('the detail panel')
+  await withPage(browser, async (page) => {
+    // Open a task, retype its title, and commit with Enter.
+    const sel = '[role="button"][aria-label^="Landing page copy pass"]'
+    await page.locator(sel).first().click()
+    await page.waitForTimeout(400)
+    const title = page.locator('[role="dialog"] textarea').first()
+    await title.fill('Landing page copy, second pass')
+    await title.press('Enter')
+    await page.waitForTimeout(600)
+    await page.keyboard.press('Escape')
+    await page.waitForTimeout(400)
+    const renamed = await page.locator('[role="button"][aria-label^="Landing page copy, second pass"]').count()
+    check('a retitled task keeps its new name', renamed === 1)
+
+    // And its block is still on the clock, where it was.
+    const where = await page.evaluate(() => {
+      const raw = JSON.parse(localStorage.getItem('tempo.v1'))
+      const t = Object.values(raw.state.tasks).find((x) => x.title === 'Landing page copy, second pass')
+      return t?.scheduled ? new Date(t.scheduled.start).toTimeString().slice(0, 5) : null
+    })
+    check('and its block has not moved', where !== null, `start: ${where}`)
+  })
+
+  await withPage(browser, async (page) => {
+    const sel = '[role="button"][aria-label^="Rewrite the planner"]'
+    await page.locator(sel).first().click()
+    await page.waitForTimeout(400)
+    await page.locator('[role="dialog"] button:has-text("P1")').first().click()
+    await page.waitForTimeout(500)
+    const p = await page.evaluate(() => {
+      const raw = JSON.parse(localStorage.getItem('tempo.v1'))
+      return Object.values(raw.state.tasks).find((t) => t.title.startsWith('Rewrite'))?.priority
+    })
+    check('changing priority in the panel persists', p === 1, `priority: ${p}`)
+  })
+
+  await withPage(browser, async (page) => {
+    // Typing is a live edit, so it must not become a separate undo step either.
+    const sel = '[role="button"][aria-label^="Landing page copy pass"]'
+    await page.locator(sel).first().click()
+    await page.waitForTimeout(400)
+    const title = page.locator('[role="dialog"] textarea').first()
+    await title.fill('One')
+    await title.press('Tab')
+    await page.waitForTimeout(400)
+    await title.fill('One and a half')
+    await title.press('Enter')
+    await page.waitForTimeout(600)
+    await page.keyboard.press('Escape')
+    await page.waitForTimeout(400)
+    const after = await page.evaluate(() => {
+      const raw = JSON.parse(localStorage.getItem('tempo.v1'))
+      return Object.values(raw.state.tasks).find((t) => t.title.includes('One'))?.title
+    })
+    check('the last edit wins, not the first keystroke', after === 'One and a half', `title: ${after}`)
+  })
+
+  await withPage(browser, async (page) => {
+    // Deleting from the panel closes it and removes the work.
+    const sel = '[role="button"][aria-label^="Landing page copy pass"]'
+    await page.locator(sel).first().click()
+    await page.waitForTimeout(400)
+    await page.locator('[role="dialog"] button:has-text("Delete")').first().click()
+    await page.waitForTimeout(600)
+    check('deleting closes the panel', (await page.locator('[role="dialog"]').count()) === 0)
+    check('and the block is gone', (await page.locator(sel).count()) === 0)
+  })
+
+  await withPage(browser, async (page) => {
+    // Keyboard only: open with Enter from the grid, then Escape out.
+    const sel = '[role="button"][aria-label^="Rewrite the planner"]'
+    await page.locator(sel).first().focus()
+    await page.keyboard.press('Enter')
+    await page.waitForTimeout(500)
+    const opened = (await page.locator('[role="dialog"]').count()) === 1
+    check('Enter on a focused block opens the editor', opened)
+    await page.keyboard.press('Escape')
+    await page.waitForTimeout(400)
+    check('Escape closes it again', (await page.locator('[role="dialog"]').count()) === 0)
+    // Arrow keys nudge the focused block.
+    const before = await page.locator(sel).first().getAttribute('aria-label')
+    await page.locator(sel).first().focus()
+    await page.keyboard.press('ArrowDown')
+    await page.waitForTimeout(500)
+    const after = await page.locator(sel).first().getAttribute('aria-label')
+    const bm = minutesOf(before)
+    const am = minutesOf(after)
+    check(
+      'arrow keys nudge a focused block',
+      bm && am && am.from - bm.from === 15,
+      `${before} -> ${after}`,
+    )
+  })
+
+  console.log('the filter editor')
+  await withPage(browser, async (page) => {
+    await page.locator('nav button[aria-label="New filter"]').click()
+    await page.waitForTimeout(400)
+    await page.locator('input[placeholder="Deep work this week"]').fill('Not on the clock')
+    await page.locator('button:has-text("Add condition")').click()
+    await page.waitForTimeout(250)
+    await page.locator('[aria-label="Condition"]').first().selectOption('scheduled')
+    await page.waitForTimeout(350)
+    // The clause starts as "not on the clock"; flipping it to the other value
+    // has to change the count.
+    const offClock = await page.locator('text=/open tasks? answer this/').innerText()
+    await page.locator('select[aria-label="Scheduled"]').selectOption('yes')
+    await page.waitForTimeout(400)
+    const onClock = await page.locator('text=/open tasks? answer this/').innerText()
+    check('the count is live as conditions change', onClock !== offClock, `${offClock} -> ${onClock}`)
+    // Back to the filter the name promises.
+    await page.locator('select[aria-label="Scheduled"]').selectOption('no')
+    await page.waitForTimeout(300)
+
+    await page.locator('button:has-text("Create filter")').click()
+    await page.waitForTimeout(700)
+    check('the filter appears in the sidebar', await page.locator('nav button:has-text("Not on the clock")').isVisible())
+    const shown = await page.locator('body').innerText()
+    check('and only unscheduled work answers it', /not scheduled/.test(shown), '')
+  })
+
+  await withPage(browser, async (page) => {
+    // Delete it again from the editor.
+    await page.locator('nav button[aria-label="New filter"]').click()
+    await page.waitForTimeout(400)
+    await page.locator('input[placeholder="Deep work this week"]').fill('Scratch')
+    await page.locator('button:has-text("Create filter")').click()
+    await page.waitForTimeout(700)
+    check('created', await page.locator('nav button:has-text("Scratch")').isVisible())
+    await page.locator('nav [aria-label="Edit Scratch"]').click({ force: true })
+    await page.waitForTimeout(400)
+    await page.locator('[role="dialog"] button:has-text("Delete")').first().click()
+    await page.waitForTimeout(600)
+    check('and deleted from the editor', (await page.locator('nav button:has-text("Scratch")').count()) === 0)
+  })
+
   console.log('the keyboard')
   await withPage(browser, async (page) => {
     await page.keyboard.press('f')
