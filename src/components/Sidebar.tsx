@@ -18,6 +18,7 @@ import {
   Sun,
   Target,
   Timer,
+  AlertTriangle,
   X,
   TrendingUp,
 } from 'lucide-react'
@@ -301,6 +302,7 @@ export function Sidebar() {
               collapsed={collapsed}
               active={activeFilter === f.id && view === 'filter'}
               count={filterCounts[f.id] ?? 0}
+              widened={f.widened}
               onClick={() => setFilter(activeFilter === f.id && view === 'filter' ? null : f.id)}
               onEdit={collapsed ? undefined : () => setEditFilter(f.id)}
             />
@@ -639,6 +641,7 @@ function NavRow({
   collapsed,
   count,
   risky,
+  widened,
   title,
   onClick,
   onEdit,
@@ -648,6 +651,8 @@ function NavRow({
   collapsed: boolean
   count?: number | null
   risky?: boolean
+  /** Set when the filter lost the thing it was asking about. */
+  widened?: string
   title?: string
   onClick: () => void
   onEdit?: () => void
@@ -662,7 +667,7 @@ function NavRow({
     >
       <button
         onClick={onClick}
-        title={title ?? (collapsed ? item.label : undefined)}
+        title={title ?? (widened ? `Broader than it was: ${widened}` : collapsed ? item.label : undefined)}
         aria-current={active ? 'page' : undefined}
         className={cn(
           'press flex min-w-0 flex-1 items-center gap-2.5 px-2 py-[6px] text-left text-[12.5px]',
@@ -673,11 +678,12 @@ function NavRow({
         {!collapsed && (
           <>
             <span className="min-w-0 flex-1 truncate">{item.label}</span>
+            {widened && <AlertTriangle size={10} className="shrink-0 text-warn" />}
             {count !== null && count !== undefined && count > 0 && (
               <span
                 className={cn(
                   'tnum rounded-full px-1.5 py-[1px] text-[10px]',
-                  risky ? 'bg-warn/20 text-warn' : 'bg-surface-3 text-ink-3',
+                  risky || widened ? 'bg-warn/20 text-warn' : 'bg-surface-3 text-ink-3',
                 )}
               >
                 {count}
