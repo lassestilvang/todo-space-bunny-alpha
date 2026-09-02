@@ -14,6 +14,17 @@ more truthful, more drivable, or more honest about time is out of scope.
 
 ## Now
 
+**References stay honest, and the filter list stays short** — `done`. The last item here was
+the vague one — whether the parts that read the store stay correct as the *mix* of entities
+changes — so it was made concrete: deleting something other things point at. Tasks were
+already cleaned up, but **saved filters were not**, so a filter that asked for "Studio work"
+kept its name and quietly matched nothing at all after the project was deleted, which reads
+as a broken app rather than a stale question. Deleting a project, label or folder now drops
+the clauses that pointed at it and keeps the rest, so the filter still means something and its
+count shows the change. Deleting a label also records history now; it was the one destructive
+action that could not be undone. The sidebar lists ten filters and offers the rest, so a long
+list cannot push projects and labels off the screen.
+
 **Three hundred filters, four hundred events and habits** — `done`. The last gap on this
 list, and the environment harness grew two groups for it: three hundred saved filters, and
 a workspace of two hundred events plus two hundred habits rather than tasks. Both hold —
@@ -212,13 +223,13 @@ never move, and nothing new gets scheduled. See README → *Keeping the plan tru
 
 Not features — things that are wrong or missing and should not be forgotten.
 
-- 149 unit tests (`npm test`), 47 interaction checks (`npm run verify:actions`) and 52
+- 153 unit tests (`npm test`), 47 interaction checks (`npm run verify:actions`) and 55
   environment checks (`npm run verify:env`) cover the logic, every surface on a pinned
   clock, six window widths, three timezones, a thousand tasks, three hundred filters and
   four hundred events and habits.
-- The sidebar has no cap on how many filters it will list, which is fine for the handful
-  anyone actually keeps and a long scroll for anyone who is not. Worth a cap or a
-  collapsible group if filter counts ever grow.
+- A filter whose clauses all fall away becomes an empty filter, which by design matches
+  everything. It is visible in the chips and the count, but a filter that has lost its
+  subject entirely might deserve to be *told* rather than merely widened.
 - The assistant negotiates about *today* only. "Free up an hour tomorrow morning" is read
   as today, which is the wrong answer rather than a refusal — worth a day parameter before
   anyone relies on it.
