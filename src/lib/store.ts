@@ -204,6 +204,26 @@ type Actions = {
   exportState: () => string
 }
 
+/**
+ * Drop filter clauses that pointed at something which no longer exists.
+ *
+ * A dangling clause is worse than a missing one: the filter would keep its name
+ * and quietly match nothing at all, which reads as the app being broken rather
+ * than as a question that needs tidying. The remaining clauses keep the filter
+ * meaningful and visible in its count.
+ */
+const withoutClauseFor = (
+  filters: Record<ID, TaskFilter>,
+  kind: 'project' | 'label' | 'folder',
+  id: ID,
+): Record<ID, TaskFilter> =>
+  Object.fromEntries(
+    Object.entries(filters).map(([fid, f]) => [
+      fid,
+      { ...f, clauses: f.clauses.filter((c) => !(c.kind === kind && 'id' in c && c.id === id)) },
+    ]),
+  )
+
 const pushHistory = (s: State) => ({
   past: [...s.history.past, snapshot(s)].slice(-HISTORY_LIMIT),
   future: [] as Snapshot[],
@@ -561,7 +581,12 @@ export const useStore = create<State & Actions>()(
               p.folderId === id ? [pid, { ...p, folderId: undefined }] : [pid, p],
             ),
           )
-          return { folders, projects, history: pushHistory(s) }
+          return {
+            folders,
+            projects,
+            filters: withoutClauseFor(s.filters, 'folder', id),
+            history: pushHistory(s),
+          }
         }),
       updateProject: (id, patch) =>
         set((s) => ({
@@ -574,6 +599,7 @@ export const useStore = create<State & Actions>()(
           tasks: Object.fromEntries(
             Object.entries(s.tasks).map(([k, t]) => [k, t.projectId === id ? { ...t, projectId: undefined } : t]),
           ),
+          filters: withoutClauseFor(s.filters, 'project', id),
           history: pushHistory(s),
         })),
       archiveProject: (id, archived) => get().updateProject(id, { archived }),
@@ -598,6 +624,8 @@ export const useStore = create<State & Actions>()(
               { ...t, labelIds: t.labelIds.filter((l) => l !== id) },
             ]),
           ),
+          filters: withoutClauseFor(s.filters, 'label', id),
+          history: pushHistory(s),
         })),
 
       /* ------------------------------- habits ------------------------------- */
