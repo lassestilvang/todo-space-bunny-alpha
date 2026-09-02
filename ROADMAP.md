@@ -14,6 +14,20 @@ more truthful, more drivable, or more honest about time is out of scope.
 
 ## Now
 
+**A widened filter says so** — `done`. The last thing here was a judgement call I had
+written down as a gap: a filter that loses *every* condition becomes an empty filter, which
+by design matches everything. "Studio work" quietly becoming "all your work" is too big a
+change to leave for the user to notice, so the filter now remembers why. Deleting a project,
+folder or label records what went on the filter; the sidebar row carries a warning triangle
+and says why on hover; the filter's own view explains it in full and points at the editor;
+and saving a condition clears it. A filter that lost only one of several conditions stays
+quiet, because that is a narrower question rather than a different one.
+
+Writing the tests for this turned up two more holes in the same corner: **editing a filter
+recorded no history, and neither did deleting one** — so a named question could be renamed or
+removed with no way back. Both are undoable now, with tests that undo and check the filter
+comes back intact.
+
 **References stay honest, and the filter list stays short** — `done`. The last item here was
 the vague one — whether the parts that read the store stay correct as the *mix* of entities
 changes — so it was made concrete: deleting something other things point at. Tasks were
@@ -223,13 +237,10 @@ never move, and nothing new gets scheduled. See README → *Keeping the plan tru
 
 Not features — things that are wrong or missing and should not be forgotten.
 
-- 153 unit tests (`npm test`), 47 interaction checks (`npm run verify:actions`) and 55
+- 158 unit tests (`npm test`), 47 interaction checks (`npm run verify:actions`) and 55
   environment checks (`npm run verify:env`) cover the logic, every surface on a pinned
   clock, six window widths, three timezones, a thousand tasks, three hundred filters and
   four hundred events and habits.
-- A filter whose clauses all fall away becomes an empty filter, which by design matches
-  everything. It is visible in the chips and the count, but a filter that has lost its
-  subject entirely might deserve to be *told* rather than merely widened.
 - The assistant negotiates about *today* only. "Free up an hour tomorrow morning" is read
   as today, which is the wrong answer rather than a refusal — worth a day parameter before
   anyone relies on it.
