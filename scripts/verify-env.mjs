@@ -258,8 +258,18 @@ const run = async () => {
     check('three hundred filters: no errors', problems.length === 0, problems[0] ?? '')
     check('three hundred filters: the app boots', boot < 10000, `${boot}ms`)
 
+    // The sidebar shows a handful and offers the rest, so a long list of filters
+    // cannot push projects and labels off the screen.
     const listed = await page.locator('nav button[aria-label^="Edit Filter"]').count()
-    check('they all reach the sidebar', listed === 300, `${listed} listed`)
+    const more = await page.locator('nav button:has-text("more filter")').innerText().catch(() => '')
+    check('the sidebar caps the list', listed === 10, `${listed} rows listed`)
+    check('and offers the rest', /^290 more filters$/.test(more.trim()), JSON.stringify(more))
+    await page.locator('nav button:has-text("more filter")').click()
+    await page.waitForTimeout(400)
+    const all = await page.locator('nav button[aria-label^="Edit Filter"]').count()
+    check('expanding shows every one', all === 300, `${all} listed`)
+    const collapsed = await page.locator('nav button:has-text("Show fewer")').count()
+    check('and it collapses again', collapsed === 1)
 
     // Every sidebar count is recomputed on every change: a filter count times a
     // task count, so this is the first thing to notice a slow workspace. Ticking
