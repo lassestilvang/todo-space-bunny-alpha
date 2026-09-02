@@ -237,7 +237,12 @@ export function CalendarView({
           onDropItem={dropItem}
         />
       </div>
-      <DayRail day={railDay} floaters={floaters} onPlan={onPlan} />
+      {/* The rail is a convenience; the grid is the product. Below this width it
+          would take more room than the calendar, so it steps aside — the planner
+          and the risk count stay reachable from the top bar and the palette. */}
+      <div className="max-[960px]:hidden">
+        <DayRail day={railDay} floaters={floaters} onPlan={onPlan} />
+      </div>
       {menu.node}
     </div>
   )
