@@ -62,6 +62,40 @@ const persist = async (page) => {
   throw new Error('the store never persisted, so nothing downstream can be trusted')
 }
 
+/**
+ * Boot with a workspace of our own making.
+ *
+ * The app is booted once to learn the shape of its sample, the state is changed,
+ * and a second page boots with that state written *before* the app starts.
+ * Seeding after boot races the store's own writes, which is how this check first
+ * failed: the app helpfully wrote its twenty-three in-memory tasks back over the
+ * thousand we had just put in storage.
+ */
+async function bootWith(browser, mutate, options = {}) {
+  const probe = await fresh(browser)
+  await persist(probe.page)
+  const template = await probe.page.evaluate(() => localStorage.getItem('tempo.v1'))
+  await probe.context.close()
+  if (!template) throw new Error('the store never persisted, so there is no shape to copy')
+
+  const state = JSON.parse(template)
+  mutate(state.state, state)
+  const payload = JSON.stringify(state)
+
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, ...options })
+  await context.addInitScript((p) => window.localStorage.setItem('tempo.v1', p), payload)
+  const page = await context.newPage()
+  const problems = []
+  page.on('pageerror', (e) => problems.push(e.message))
+  page.on('console', (m) => {
+    if (m.type() === 'error') problems.push(m.text())
+  })
+  await page.clock.setFixedTime(new Date(2026, 9, 2, 9, 5))
+  const started = Date.now()
+  await page.goto(URL, { waitUntil: 'networkidle' })
+  return { context, page, problems, boot: Date.now() - started }
+}
+
 const run = async () => {
   const server = await ensureServer(URL)
   const browser = await chromium.launch({
@@ -151,72 +185,46 @@ const run = async () => {
   /* ----------------------------- a much larger workspace --------------------- */
   console.log('a thousand tasks')
   {
-    // Boot once to learn the shape of a seeded workspace, then boot again with a
-    // thousand extra tasks written *before* the app starts. Going through storage
-    // after boot races the store's own writes, which is how this check first
-    // failed: the app helpfully wrote its twenty-three in-memory tasks back over
-    // the thousand.
-    const probe = await fresh(browser)
-    await persist(probe.page)
-    const template = await probe.page.evaluate(() => localStorage.getItem('tempo.v1'))
-    await probe.context.close()
-    if (!template) throw new Error('the store never persisted a template workspace')
-
-    const bulkState = JSON.parse(template)
-    const base = new Date(2026, 9, 2)
-    for (let i = 0; i < 1000; i++) {
-      const due = new Date(base)
-      due.setDate(due.getDate() + (i % 30))
-      const key = `${due.getFullYear()}-${`${due.getMonth() + 1}`.padStart(2, '0')}-${`${due.getDate()}`.padStart(2, '0')}`
-      bulkState.state.tasks[`big${i}`] = {
-        id: `big${i}`,
-        title: `Bulk task ${i}`,
-        notes: '',
-        completed: i % 7 === 0,
-        createdAt: base.getTime(),
-        updatedAt: base.getTime(),
-        due: key,
-        dueHasTime: false,
-        scheduled: null,
-        durationMin: 30,
-        priority: (i % 4) + 1,
-        energy: i % 3 === 0 ? 'deep' : 'shallow',
-        dayPart: 'any',
-        labelIds: [],
-        subtasks: [],
-        reminders: [],
-        pinned: false,
-        planLocked: true,
-        completedStreak: 0,
-        order: i,
+    const { context, page, problems, boot } = await bootWith(browser, (state) => {
+      const base = new Date(2026, 9, 2)
+      for (let i = 0; i < 1000; i++) {
+        const due = new Date(base)
+        due.setDate(due.getDate() + (i % 30))
+        const key = `${due.getFullYear()}-${`${due.getMonth() + 1}`.padStart(2, '0')}-${`${due.getDate()}`.padStart(2, '0')}`
+        state.tasks[`big${i}`] = {
+          id: `big${i}`,
+          title: `Bulk task ${i}`,
+          notes: '',
+          completed: i % 7 === 0,
+          createdAt: base.getTime(),
+          updatedAt: base.getTime(),
+          due: key,
+          dueHasTime: false,
+          scheduled: null,
+          durationMin: 30,
+          priority: (i % 4) + 1,
+          energy: i % 3 === 0 ? 'deep' : 'shallow',
+          dayPart: 'any',
+          labelIds: [],
+          subtasks: [],
+          reminders: [],
+          pinned: false,
+          planLocked: true,
+          completedStreak: 0,
+          order: i,
+        }
       }
-    }
-    const payload = JSON.stringify(bulkState)
-
-    const context = await browser.newContext({ viewport: { width: 1440, height: 900 } })
-    await context.addInitScript((p) => window.localStorage.setItem('tempo.v1', p), payload)
-    const page = await context.newPage()
-    const problems = []
-    page.on('pageerror', (e) => problems.push(e.message))
-    page.on('console', (m) => {
-      if (m.type() === 'error') problems.push(m.text())
     })
-    await page.clock.setFixedTime(new Date(2026, 9, 2, 9, 5))
-    const started = Date.now()
-    await page.goto(URL, { waitUntil: 'networkidle' })
     await page.waitForTimeout(1200)
-    check('a thousand tasks: the app boots', true, `${Date.now() - started}ms`)
+    check('a thousand tasks: the app boots', boot < 8000, `${boot}ms`)
     check('a thousand tasks: no errors', problems.length === 0, problems[0] ?? '')
 
     const stored = await page.evaluate(
       () => Object.keys(JSON.parse(localStorage.getItem('tempo.v1')).state.tasks).length,
     )
     check('all 1000 seeded tasks are there', stored > 1000, `${stored} in storage`)
+    check('the day still draws', (await page.locator('[role="button"][aria-label]').count()) > 0)
 
-    const blocks = await page.locator('[role="button"][aria-label]').count()
-    check('the day still draws', blocks > 0, `${blocks} blocks`)
-
-    // The list view is where a thousand rows would hurt.
     const listStart = Date.now()
     await page.locator('nav button:has-text("Inbox")').first().click()
     await page.waitForTimeout(2000)
@@ -224,20 +232,118 @@ const run = async () => {
     const elapsed = Date.now() - listStart
     // The sidebar count and the rendered list must agree, whichever is right.
     const badge = Number(
-      (await page.locator('nav button:has-text("Inbox")').first().innerText())
-        .replace(/\D/g, '')
-        .trim(),
+      (await page.locator('nav button:has-text("Inbox")').first().innerText()).replace(/\D/g, '').trim(),
     )
-    check('the list view renders what the sidebar counts', rows === badge, `${rows} rows vs ${badge} in the sidebar`)
+    check('the list view renders what the sidebar counts', rows === badge, `${rows} rows vs ${badge} counted`)
     check('and there really are a thousand tasks', badge > 800, `${badge} open in the inbox`)
     check('and it stays responsive', elapsed < 8000, `${rows} rows in ${elapsed}ms`)
     await page.screenshot({ path: `${OUT}-big.png` })
+    await context.close()
+  }
 
-    // And the planner still answers.
-    await page.keyboard.press('p')
+  /* ------------------------------ five hundred filters ------------------------ */
+  console.log('three hundred saved filters')
+  {
+    const { context, page, problems, boot } = await bootWith(browser, (state) => {
+      for (let i = 0; i < 300; i++) {
+        state.filters[`f${i}`] = {
+          id: `f${i}`,
+          name: `Filter ${i}`,
+          clauses: [{ kind: 'priority', priority: (i % 4) + 1 }],
+          order: i,
+        }
+      }
+    })
+    await page.waitForTimeout(1000)
+    check('three hundred filters: no errors', problems.length === 0, problems[0] ?? '')
+    check('three hundred filters: the app boots', boot < 10000, `${boot}ms`)
+
+    const listed = await page.locator('nav button[aria-label^="Edit Filter"]').count()
+    check('they all reach the sidebar', listed === 300, `${listed} listed`)
+
+    // Every sidebar count is recomputed on every change: a filter count times a
+    // task count, so this is the first thing to notice a slow workspace. Ticking
+    // a habit would not move any task count, so complete a task instead and time
+    // how long the numbers take to catch up.
+    await page.locator('nav button:has-text("Today")').first().click()
     await page.waitForTimeout(1200)
-    check('the planner still answers', await page.locator('[role="dialog"]').isVisible())
-    await page.keyboard.press('Escape')
+    // Watch the inbox count: it is derived from the tasks directly, unlike Today,
+    // whose badge deliberately shows the at-risk number when there is any risk.
+    const countOf = async (label) =>
+      Number((await page.locator(`nav button:has-text("${label}")`).first().innerText()).replace(/\D/g, ''))
+    const before = await countOf('Inbox')
+    const t0 = Date.now()
+    await page.locator('main button[role="checkbox"]').first().click({ force: true })
+    const moved = await page
+      .waitForFunction(
+        (was) => {
+          const row = [...document.querySelectorAll('nav button')].find((b) =>
+            b.textContent.startsWith('Inbox'),
+          )
+          return row && row.textContent.replace(/\D/g, '') !== was
+        },
+        before,
+        { timeout: 30000 },
+      )
+      .then(() => true)
+      .catch(() => false)
+    const settled = Date.now() - t0
+    check('a change still settles quickly with them', moved && settled < 4000, `${settled}ms (moved: ${moved})`)
+    await page.screenshot({ path: `${OUT}-filters.png` })
+    await context.close()
+  }
+
+  /* ------------------ a workspace of events and habits, not tasks ------------- */
+  console.log('four hundred events and habits')
+  {
+    const { context, page, problems, boot } = await bootWith(browser, (state) => {
+      const at = (dayOffset, hour, half) => {
+        const d = new Date(2026, 9, 2 + dayOffset)
+        return d.setHours(hour, half, 0, 0)
+      }
+      for (let i = 0; i < 200; i++) {
+        state.events[`busy${i}`] = {
+          id: `busy${i}`,
+          title: `Busy ${i}`,
+          start: at(i % 14, 7 + (i % 9), (i % 2) * 30),
+          end: at(i % 14, 7 + (i % 9), (i % 2) * 30) + 1800000,
+          allDay: false,
+          locked: true,
+          tentative: false,
+        }
+      }
+      for (let i = 0; i < 200; i++) {
+        state.habits[`h${i}`] = {
+          id: `h${i}`,
+          name: `Habit ${i}`,
+          color: 'c-sky',
+          cadence: 'weekdays',
+          weekdays: [],
+          targetPerWeek: 5,
+          anchorMin: 6 * 60 + (i % 12) * 15,
+          durationMin: 15,
+          log: [],
+          archived: false,
+          createdAt: at(0, 8, 0),
+        }
+      }
+    })
+    await page.waitForTimeout(1200)
+    check('many events: no errors', problems.length === 0, problems[0] ?? '')
+    check('many events: the app boots', boot < 10000, `${boot}ms`)
+    const drawn = await page.locator('[role="button"][aria-label]').count()
+    check('the crowded day still draws', drawn > 5, `${drawn} blocks`)
+
+    const planStart = Date.now()
+    await page.keyboard.press('p')
+    const opened = await page
+      .waitForSelector('[role="dialog"]', { timeout: 30000 })
+      .then(() => true)
+      .catch(() => false)
+    const planned = Date.now() - planStart
+    check('the planner answers in a crowded day', opened, `${planned}ms`)
+    check('and answers promptly', opened && planned < 8000, `${planned}ms`)
+    await page.screenshot({ path: `${OUT}-crowded.png` })
     await context.close()
   }
 
