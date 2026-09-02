@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "verify:actions": "node scripts/verify-actions.mjs"
+    "verify:actions": "node scripts/verify-actions.mjs",
+    "verify:env": "node scripts/verify-env.mjs"
   },
   "dependencies": {
     "clsx": "2.1.1",
