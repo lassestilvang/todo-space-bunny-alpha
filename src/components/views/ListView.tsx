@@ -192,8 +192,18 @@ export function ListView({ view, onPlan }: { view: ViewId; onPlan: () => void })
               {filtered.length} item{filtered.length === 1 ? '' : 's'} · {Math.floor(totalMin / 60)}h{' '}
               {totalMin % 60}m estimated
             </span>
+            {activeFilter && filters[activeFilter]?.widened && (
+              <span className="mt-3 flex items-start gap-2 rounded-[var(--radius-md)] border border-warn/40 bg-warn/10 px-2.5 py-2 text-[11px] leading-snug text-warn">
+                <AlertTriangle size={12} className="mt-[1px] shrink-0" />
+                <span>
+                  This filter asks a much broader question than it used to —{' '}
+                  {filters[activeFilter].widened}, so its conditions were dropped and it now
+                  matches every open task. Edit it to put a condition back.
+                </span>
+              </span>
+            )}
             {clauseChips.length > 0 && (
-              <span className="flex flex-wrap items-center gap-1">
+              <span className="mt-2 flex flex-wrap items-center gap-1">
                 {clauseChips.map((c, i) => (
                   <span
                     key={i}
