@@ -28,7 +28,7 @@ First load seeds a small sample workspace (projects, tasks, meetings, habits) so
 | `npm test` | Vitest: the planner, the capture parser, the clock, the date arithmetic, the drag geometry, filters, risk, focus, the adviser, the room proposals and the store. |
 | `node scripts/verify.mjs` | Headless visual smoke test: visits all 15 surfaces, screenshots them to `/tmp`, and fails loudly on console errors. |
 | `npm run verify:actions` | Interaction tests in a real browser on a pinned clock: the grid, the detail panel, the filter editor, the habit and note editors, the planner sheet, the assistant, undo and the shortcuts. |
-| `npm run verify:env` | The app in conditions it was not written in: six window widths, three timezones, and a thousand tasks. |
+| `npm run verify:env` | The app in conditions it was not written in: six window widths, three timezones, a thousand tasks, three hundred filters, four hundred events and habits. |
 
 `verify.mjs` reads `URL`, `OUT`, and `CHROME_PATH` from the environment. It defaults to `http://localhost:5180`, the `/tmp/tempo` prefix, and a Playwright-managed Chrome for Testing build.
 
