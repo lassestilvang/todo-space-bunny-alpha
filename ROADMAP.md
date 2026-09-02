@@ -14,6 +14,24 @@ more truthful, more drivable, or more honest about time is out of scope.
 
 ## Now
 
+**The assistant can book a meeting, and its own examples work** — `done`. Two things, in
+that order, because the order mattered.
+
+First the coverage: `capture.ts`, `series.ts` and the assistant's intents had no unit tests
+at all. Writing them — the assistant's first, since a new branch was about to go into it —
+found that **two of the commands the app advertises do not parse**. The fallback reply
+offers "block 45 minutes for the memo tomorrow at 2", but the matcher wanted the task
+*before* the length; and it offers "done with the copy", but the "with" was being looked
+for as part of the task's name. Both now work in either order, and `find` names what it
+found instead of reporting "1 match for passport" and leaving you to guess.
+
+Then the feature the tests made safe: **"meeting with Ana tuesday at 2pm" books an event**
+rather than filing a task. The words decide — meeting, call, coffee, lunch with, 1:1,
+standup, interview — and when they say "meeting" but the sentence has no time, it asks
+rather than inventing an hour, because a meeting booked at the wrong time is worse than no
+meeting. Everything else still files tasks, and one undo takes the booking back off the
+calendar.
+
 **A widened filter says so** — `done`. The last thing here was a judgement call I had
 written down as a gap: a filter that loses *every* condition becomes an empty filter, which
 by design matches everything. "Studio work" quietly becoming "all your work" is too big a
@@ -237,7 +255,7 @@ never move, and nothing new gets scheduled. See README → *Keeping the plan tru
 
 Not features — things that are wrong or missing and should not be forgotten.
 
-- 158 unit tests (`npm test`), 47 interaction checks (`npm run verify:actions`) and 55
+- 190 unit tests (`npm test`), 47 interaction checks (`npm run verify:actions`) and 55
   environment checks (`npm run verify:env`) cover the logic, every surface on a pinned
   clock, six window widths, three timezones, a thousand tasks, three hundred filters and
   four hundred events and habits.
@@ -275,8 +293,5 @@ Not features — things that are wrong or missing and should not be forgotten.
   and honest counts already carry the signal.
 - **Sharing, accounts, sync.** Tempo is local-first on purpose. Adding a backend
   changes the product, not just the feature set.
-- **Natural-language *event* creation** ("meeting with Ana tuesday 2pm"). The parser now
-  has tests behind it, so this is unblocked rather than forbidden — but it is a new entity
-  type on the calendar and worth doing deliberately, not as a leftover.
 - **A mobile layout.** The grid needs width to be legible. A phone-shaped Tempo would
   be a different app with a different name.
