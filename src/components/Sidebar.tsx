@@ -46,6 +46,9 @@ const TIME: NavItem[] = [
   { id: 'agenda', label: 'Agenda', icon: TrendingUp, group: 'time' },
 ]
 
+/** How many saved filters the sidebar lists before offering the rest. */
+const FILTER_ROWS = 10
+
 const LISTS: NavItem[] = [
   { id: 'inbox', label: 'Inbox', icon: Inbox, group: 'lists' },
   { id: 'today', label: 'Today', icon: Target, group: 'lists' },
@@ -97,6 +100,9 @@ export function Sidebar() {
   const [editFilter, setEditFilter] = useState<string | null | undefined>(undefined)
   const [newProject, setNewProject] = useState(false)
   const [filing, setFiling] = useState<string | null>(null)
+  // A handful of filters is the norm; a long list should not push the rest of the
+  // sidebar off the screen.
+  const [allFilters, setAllFilters] = useState(false)
   const [newFolder, setNewFolder] = useState(false)
   const [folderName, setFolderName] = useState('')
   const [projectName, setProjectName] = useState('')
@@ -288,23 +294,32 @@ export function Sidebar() {
             ) : undefined
           }
         >
+          {filterList.slice(0, allFilters ? undefined : FILTER_ROWS).map((f) => (
+            <NavRow
+              key={f.id}
+              item={{ id: 'filter', label: f.name, icon: Filter, group: 'lists' }}
+              collapsed={collapsed}
+              active={activeFilter === f.id && view === 'filter'}
+              count={filterCounts[f.id] ?? 0}
+              onClick={() => setFilter(activeFilter === f.id && view === 'filter' ? null : f.id)}
+              onEdit={collapsed ? undefined : () => setEditFilter(f.id)}
+            />
+          ))}
+          {filterList.length > FILTER_ROWS && !collapsed && (
+            <button
+              onClick={() => setAllFilters((v) => !v)}
+              className="press w-full rounded-[var(--radius-md)] px-2 py-[5px] text-left text-[11px] text-ink-4 hover:text-ink-2"
+            >
+              {allFilters
+                ? 'Show fewer'
+                : `${filterList.length - FILTER_ROWS} more filter${filterList.length - FILTER_ROWS === 1 ? '' : 's'}`}
+            </button>
+          )}
           {filterList.length === 0 && !collapsed ? (
             <p className="px-2 pb-1 text-[10.5px] leading-snug text-ink-4">
               Keep a question about your tasks and ask it again.
             </p>
-          ) : (
-            filterList.map((f) => (
-              <NavRow
-                key={f.id}
-                item={{ id: 'filter', label: f.name, icon: Filter, group: 'lists' }}
-                collapsed={collapsed}
-                active={activeFilter === f.id && view === 'filter'}
-                count={filterCounts[f.id] ?? 0}
-                onClick={() => setFilter(activeFilter === f.id && view === 'filter' ? null : f.id)}
-                onEdit={collapsed ? undefined : () => setEditFilter(f.id)}
-              />
-            ))
-          )}
+          ) : null}
         </Group>
 
         <Group
