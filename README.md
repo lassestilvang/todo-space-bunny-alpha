@@ -84,6 +84,8 @@ text never silently moves the block.
   that pointed at it, so a filter never quietly matches nothing — and if that leaves it with
   none, the filter says it has broadened rather than widening in silence. Filters live in the sidebar with a live count, take the
   number keys after the fixed views, and travel with your export.
+- **Meetings from words**: "meeting with Ana tuesday at 2pm" books the calendar rather than
+  filing a task; "coffee with Sam" asks for a time rather than guessing one.
 - **Quick capture** parses `#project`, `@label`, `!1`–`!4`, `tomorrow`, `at 9:30`, `for 45m`, `every tue`, and shows a live reading of what it understood. Typed times may be 12- or 24-hour; everything Tempo *shows* is 24-hour, including the time fields — there is no native time input left in the app.
 - **Views**: day, week, month, agenda (7/14/21 days), inbox/today/upcoming lists, saved
   filters, focus, Eisenhower matrix, project board, habits, notes, review. Below 960px the
@@ -99,8 +101,8 @@ text never silently moves the block.
 - **Steps** are time-aware: a task with three steps asks the clock for a third of its
   estimate while two are outstanding, and ticking one shortens its block on the spot.
 - **Focus timer** with rounds and long breaks, opened from the sidebar pill as a modal, or full-screen with `F`. Focus mode shows one ring, the task, and what comes next; `Space` runs the session and `Esc` leaves with the session still running. Timer state lives outside React, so no surface can interrupt a run. Finished focus blocks are logged as store records; break sessions never pollute the numbers.
-- **Coach** works offline against a deterministic intent engine (add, schedule, unschedule,
-  complete, delete, priority, plan). Ask it to "free up an hour at 14:00" and it proposes
+- **Coach** works offline against a deterministic intent engine (add, book, schedule,
+  unschedule, complete, delete, priority, plan, and "free up an hour"). Ask it to "free up an hour at 14:00" and it proposes
   ways to make room — move this block, drop that one, shorten the other — instead of
   silently rearranging your afternoon; you pick, and one undo covers it. Supply an
   Anthropic or OpenAI key in Settings for model-written replies.
