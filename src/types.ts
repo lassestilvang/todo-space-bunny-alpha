@@ -221,6 +221,12 @@ export type TaskFilter = {
   name: string
   clauses: FilterClause[]
   order: number
+  /**
+   * Set when the conditions were dropped because what they asked about was
+   * deleted. The filter still works, but it now matches far more than it did, and
+   * the user is told rather than left to notice.
+   */
+  widened?: string
 }
 
 export type ViewId =
