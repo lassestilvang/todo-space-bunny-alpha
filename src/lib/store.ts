@@ -216,12 +216,20 @@ const withoutClauseFor = (
   filters: Record<ID, TaskFilter>,
   kind: 'project' | 'label' | 'folder',
   id: ID,
+  subject: string,
 ): Record<ID, TaskFilter> =>
   Object.fromEntries(
-    Object.entries(filters).map(([fid, f]) => [
-      fid,
-      { ...f, clauses: f.clauses.filter((c) => !(c.kind === kind && 'id' in c && c.id === id)) },
-    ]),
+    Object.entries(filters).map(([fid, f]) => {
+      const clauses = f.clauses.filter((c) => !(c.kind === kind && 'id' in c && c.id === id))
+      if (clauses.length === f.clauses.length) return [fid, f]
+      const { widened: _gone, ...rest } = f
+      // Losing one condition of several leaves a narrower question. Losing the
+      // last one turns "Studio work" into "everything", which deserves a word.
+      return [
+        fid,
+        clauses.length === 0 ? { ...rest, clauses, widened: `${subject} was deleted` } : { ...rest, clauses },
+      ]
+    }),
   )
 
 const pushHistory = (s: State) => ({
@@ -584,7 +592,7 @@ export const useStore = create<State & Actions>()(
           return {
             folders,
             projects,
-            filters: withoutClauseFor(s.filters, 'folder', id),
+            filters: withoutClauseFor(s.filters, 'folder', id, `the folder “${s.folders[id]?.name ?? 'unknown'}”`),
             history: pushHistory(s),
           }
         }),
@@ -599,7 +607,8 @@ export const useStore = create<State & Actions>()(
           tasks: Object.fromEntries(
             Object.entries(s.tasks).map(([k, t]) => [k, t.projectId === id ? { ...t, projectId: undefined } : t]),
           ),
-          filters: withoutClauseFor(s.filters, 'project', id),
+          filters: withoutClauseFor(s.filters, 'project', id, `the project “${s.projects[id]?.name ?? 'unknown'}”`),
+
           history: pushHistory(s),
         })),
       archiveProject: (id, archived) => get().updateProject(id, { archived }),
@@ -624,7 +633,8 @@ export const useStore = create<State & Actions>()(
               { ...t, labelIds: t.labelIds.filter((l) => l !== id) },
             ]),
           ),
-          filters: withoutClauseFor(s.filters, 'label', id),
+          filters: withoutClauseFor(s.filters, 'label', id, `the label “${s.labels[id]?.name ?? 'unknown'}”`),
+
           history: pushHistory(s),
         })),
 
@@ -881,7 +891,11 @@ export const useStore = create<State & Actions>()(
         set((s) => {
           const cur = s.filters[id]
           if (!cur) return {}
-          return { filters: { ...s.filters, [id]: { ...cur, ...patch, id } } }
+          const next = { ...cur, ...patch, id }
+          // Saving conditions is the user tidying it, so the warning goes. A
+          // rename alone does not clear it: that did not fix the question.
+          if (patch.clauses) delete next.widened
+          return { filters: { ...s.filters, [id]: next }, history: pushHistory(s) }
         }),
       deleteFilter: (id) =>
         set((s) => {
@@ -890,6 +904,7 @@ export const useStore = create<State & Actions>()(
           return {
             filters,
             ui: { ...s.ui, filter: s.ui.filter === id ? null : s.ui.filter },
+            history: pushHistory(s),
           }
         }),
       setFilter: (id) =>
