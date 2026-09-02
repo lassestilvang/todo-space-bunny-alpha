@@ -76,6 +76,30 @@ describe('reading the request', () => {
     expect(parseRoomRequest('free up something this morning', settings, NOW).from).toBe(8 * 60 + 30)
   })
 
+  it('does not quietly move a request that lands near the end of the day', () => {
+    // Regression: the start was capped at "workEnd minus a step", so asking for
+    // 18:00 when the day ends at 18:00 became 17:45 and the answer was about
+    // the wrong hour.
+    const r = parseRoomRequest('free up 30 minutes at 18:00', settings, at(16, 30))
+    expect(r.from).toBe(18 * 60)
+    expect(r.rolledForward).toBe(false)
+  })
+
+  it('says so when the day runs out before the requested length', () => {
+    const r = proposeRoom(
+      [task({ scheduled: { start: at(17), end: at(17, 45) } })],
+      [],
+      [],
+      settings,
+      at(16, 30),
+      'free up 90 minutes at 17:00',
+    )
+    expect(r.window.end - r.window.start).toBeLessThan(90)
+    expect(r.notes.join(' ')).toMatch(/working day ends/)
+    // And it has to reach the reply, not just the report.
+    expect(roomReply(r)).toMatch(/working day ends/)
+  })
+
   it('never asks for more time than the day has', () => {
     expect(parseRoomRequest('free up 5 hours', settings, NOW).need).toBe(240)
   })
@@ -185,16 +209,42 @@ describe('what it will not touch', () => {
     expect(r.notes.join(' ')).toMatch(/nearest opening is/)
   })
 
+  it('says so when the requested hour has already gone', () => {
+    // Asked for a window that is behind us, the reply must not quietly pretend
+    // it was answered at the time that was asked for.
+    const r = proposeRoom([], [], [], settings, at(15, 54), 'free up an hour at 13:30')
+    const reply = roomReply(r)
+    expect(reply).toMatch(/passed/)
+    expect(reply).toMatch(/looked from now/)
+  })
+
   it('lists immovable things readably', () => {
     expect(listNames(['a'])).toBe('a')
     expect(listNames(['a', 'b'])).toBe('a and b')
     expect(listNames(['a', 'b', 'c'])).toBe('a, b and c')
   })
 
-  it('leaves a hand-placed block alone, even in the window', () => {
+  it('offers to move a hand-placed block, because the user is the one asking', () => {
+    // A block the user placed is off limits to the *planner*. Here the user is
+    // asking for room, so shifting it is exactly what they want.
     const hand = task({ title: 'Mine', planLocked: true, scheduled: { start: at(14), end: at(15) } })
     const report = proposeRoom([hand], [], [], settings, NOW, 'free up 30 minutes at 14:00')
+    expect(report.proposals.length).toBeGreaterThan(0)
+    expect(report.proposals[0].label).toContain('Mine')
+  })
+
+  it('never offers to move a meeting', () => {
+    const busy = [meeting({ title: 'Design review', start: at(14), end: at(15) })]
+    const report = proposeRoom(
+      [task({ scheduled: { start: at(10), end: at(11) } })],
+      busy,
+      [],
+      settings,
+      NOW,
+      'free up 30 minutes at 14:00',
+    )
     expect(report.proposals).toHaveLength(0)
+    expect(report.notes.join(' ')).toMatch(/Design review/)
   })
 
   it('leaves meetings alone', () => {
