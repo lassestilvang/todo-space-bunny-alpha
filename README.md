@@ -27,7 +27,8 @@ First load seeds a small sample workspace (projects, tasks, meetings, habits) so
 | `npm run lint` | oxlint. Zero errors; the warnings are mostly `react(purity)` for `new Date()` during render. |
 | `npm test` | Vitest: the planner, the capture parser, the clock, the date arithmetic, the drag geometry, filters, risk, focus, the adviser, the room proposals and the store. |
 | `node scripts/verify.mjs` | Headless visual smoke test: visits all 15 surfaces, screenshots them to `/tmp`, and fails loudly on console errors. |
-| `npm run verify:actions` | Interaction tests in a real browser on a pinned clock: the grid, the detail panel, the filter editor, the habit and note editors, the planner sheet, the assistant, undo and the shortcuts. Starts the app itself if nothing is serving it. |
+| `npm run verify:actions` | Interaction tests in a real browser on a pinned clock: the grid, the detail panel, the filter editor, the habit and note editors, the planner sheet, the assistant, undo and the shortcuts. |
+| `npm run verify:env` | The app in conditions it was not written in: six window widths, three timezones, and a thousand tasks. |
 
 `verify.mjs` reads `URL`, `OUT`, and `CHROME_PATH` from the environment. It defaults to `http://localhost:5180`, the `/tmp/tempo` prefix, and a Playwright-managed Chrome for Testing build.
 
@@ -83,7 +84,9 @@ text never silently moves the block.
   number keys after the fixed views, and travel with your export.
 - **Quick capture** parses `#project`, `@label`, `!1`–`!4`, `tomorrow`, `at 9:30`, `for 45m`, `every tue`, and shows a live reading of what it understood. Typed times may be 12- or 24-hour; everything Tempo *shows* is 24-hour, including the time fields — there is no native time input left in the app.
 - **Views**: day, week, month, agenda (7/14/21 days), inbox/today/upcoming lists, saved
-  filters, focus, Eisenhower matrix, project board, habits, notes, review.
+  filters, focus, Eisenhower matrix, project board, habits, notes, review. Below 960px the
+  day rail steps aside so the calendar keeps the space; the planner and the risk count stay
+  in the top bar.
 - **Folders** group projects one level deep in the sidebar. File a project with the row's
   own button or by right-clicking it, and a saved filter can ask for "everything in Work".
 - **Repeating meetings** — set a repeat rule in the event panel and the occurrences are
