@@ -14,6 +14,7 @@
  * Needs the app served (defaults to localhost:5180). Run: npm run verify:actions
  */
 import { chromium } from 'playwright'
+import { ensureServer } from './serve.mjs'
 
 const URL = process.env.URL ?? 'http://localhost:5180'
 const OUT = process.env.OUT ?? '/tmp/tempo-actions'
@@ -40,8 +41,19 @@ const minutesOf = (label) => {
   return { from: Number(m[1]) * 60 + Number(m[2]), to: Number(m[3]) * 60 + Number(m[4]) }
 }
 
+/**
+ * A fixed morning, so the suite behaves the same at 09:00 and at 17:00.
+ *
+ * Several checks depend on what is on screen: the grid opens scrolled to the
+ * current hour, so a block at 10:00 is on the window at nine in the morning and
+ * off it after lunch. Nine-oh-five is before the working day starts, which leaves
+ * the whole day visible and every "now + 2 hours" target comfortably inside it.
+ */
+const FIXED_NOW = new Date(2026, 9, 2, 9, 5)
+
 async function withPage(browser, act) {
   const page = await browser.newPage({ viewport: VIEWPORT })
+  await page.clock.setFixedTime(FIXED_NOW)
   const problems = []
   page.on('pageerror', (e) => problems.push(e.message))
   page.on('console', (m) => {
@@ -60,11 +72,20 @@ async function withPage(browser, act) {
   await page.close()
 }
 
-/** Drag a block by `dy` pixels, grabbing it `grabY` below its top. */
+/**
+ * Drag a block by `dy` pixels, grabbing it `grabY` below its top.
+ *
+ * The block is scrolled into view first: the grid opens scrolled to the current
+ * hour, so a block that is fine in the morning can be off the top of the
+ * window in the afternoon.
+ */
 async function dragBlock(page, titlePrefix, dy, grabY = 6) {
   const sel = `[role="button"][aria-label^="${titlePrefix}"]`
-  const before = await page.locator(sel).first().getAttribute('aria-label')
-  const box = await page.locator(sel).first().boundingBox()
+  const target = page.locator(sel).first()
+  await target.scrollIntoViewIfNeeded()
+  await page.waitForTimeout(150)
+  const before = await target.getAttribute('aria-label')
+  const box = await target.boundingBox()
   const x = box.x + Math.min(20, box.width / 3)
   await page.mouse.move(x, box.y + grabY)
   await page.mouse.down()
@@ -74,7 +95,44 @@ async function dragBlock(page, titlePrefix, dy, grabY = 6) {
   return { before, after: await page.locator(sel).first().getAttribute('aria-label') }
 }
 
+/**
+ * Drag a block to the next full hour at least two hours out, so a later check
+ * can ask about a window that is genuinely in the future.
+ *
+ * By drag rather than by typing in the panel: a dragged block is hand-placed and
+ * the calendar leaves it alone, whereas one set through the panel belongs to the
+ * planner and gets pulled back to the hour it prefers.
+ */
+async function placeOnNextHour(page, titlePrefix) {
+  const target = await page.evaluate(() => {
+    const d = new Date()
+    d.setHours(d.getHours() + 2, 0, 0, 0)
+    return d.getHours() * 60 + d.getMinutes()
+  })
+  const sel = `[role="button"][aria-label^="${titlePrefix}"]`
+  const block = page.locator(sel).first()
+  await block.scrollIntoViewIfNeeded()
+  await page.waitForTimeout(200)
+  const from = minutesOf(await block.getAttribute('aria-label')).from
+  const box = await block.boundingBox()
+  const x = box.x + Math.min(20, box.width / 3)
+  const grab = box.height / 2
+  await page.mouse.move(x, box.y + grab)
+  await page.mouse.down()
+  await page.mouse.move(x, box.y + grab + ((target - from) / 60) * HOUR, { steps: 18 })
+  await page.mouse.up()
+  await page.waitForTimeout(1100)
+  const at = minutesOf(await page.locator(sel).first().getAttribute('aria-label'))
+  const landed = at?.from ?? null
+  return {
+    target,
+    landed,
+    clock: `${String(Math.floor((landed ?? 0) / 60)).padStart(2, '0')}:${String((landed ?? 0) % 60).padStart(2, '0')}`,
+  }
+}
+
 const run = async () => {
+  const server = await ensureServer(URL)
   const browser = await chromium.launch({
     executablePath:
       process.env.CHROME_PATH ??
@@ -90,7 +148,9 @@ const run = async () => {
   })
 
   await withPage(browser, async (page) => {
-    const { before, after } = await dragBlock(page, 'Landing page copy pass', -HOUR)
+    // From a block late in the day: dragging upward from near the top of the
+    // grid would trip the edge auto-scroll and travel further than the pointer.
+    const { before, after } = await dragBlock(page, 'Dentist', -HOUR)
     const b = minutesOf(before)
     const a = minutesOf(after)
     check('and upwards too', a.from - b.from === -60, `${before} -> ${after}`)
@@ -98,7 +158,10 @@ const run = async () => {
 
   await withPage(browser, async (page) => {
     // A block that is already in an overlap cascade.
-    const stacked = await page.locator('[role="button"][aria-label^="Standup"]').first().boundingBox()
+    const standup = page.locator('[role="button"][aria-label^="Standup"]').first()
+    await standup.scrollIntoViewIfNeeded()
+    await page.waitForTimeout(150)
+    const stacked = await standup.boundingBox()
     const info = await page.locator('[role="button"][aria-label^="Standup"]').first().getAttribute('aria-label')
     const x = stacked.x + Math.min(16, stacked.width / 3)
     // The middle, not the top: the first few pixels of a block are its resize
@@ -138,8 +201,11 @@ const run = async () => {
   console.log('resizing')
   await withPage(browser, async (page) => {
     const sel = '[role="button"][aria-label^="Rewrite the planner"]'
-    const before = await page.locator(sel).first().getAttribute('aria-label')
-    const box = await page.locator(sel).first().boundingBox()
+    const target = page.locator(sel).first()
+    await target.scrollIntoViewIfNeeded()
+    await page.waitForTimeout(150)
+    const before = await target.getAttribute('aria-label')
+    const box = await target.boundingBox()
     await page.mouse.move(box.x + 20, box.y + box.height - 2)
     await page.mouse.down()
     await page.mouse.move(box.x + 20, box.y + box.height - 2 + HOUR, { steps: 12 })
@@ -198,7 +264,10 @@ const run = async () => {
 
   await withPage(browser, async (page) => {
     const sel = '[role="button"][aria-label^="Rewrite the planner"]'
-    const box = await page.locator(sel).first().boundingBox()
+    const target = page.locator(sel).first()
+    await target.scrollIntoViewIfNeeded()
+    await page.waitForTimeout(150)
+    const box = await target.boundingBox()
     await page.mouse.click(box.x + 20, box.y + 8)
     await page.waitForTimeout(500)
     check('a click does open it', (await page.locator('[role="dialog"]').count()) === 1)
@@ -255,8 +324,11 @@ const run = async () => {
     // Into free space late in the day, so nothing is displaced and the drag is
     // the only change.
     const sel = '[role="button"][aria-label^="Rewrite the planner"]'
-    const before = await page.locator(sel).first().getAttribute('aria-label')
-    const box = await page.locator(sel).first().boundingBox()
+    const target = page.locator(sel).first()
+    await target.scrollIntoViewIfNeeded()
+    await page.waitForTimeout(150)
+    const before = await target.getAttribute('aria-label')
+    const box = await target.boundingBox()
     const x = box.x + Math.min(20, box.width / 3)
     const grab = box.height / 2
     await page.mouse.move(x, box.y + grab)
@@ -511,6 +583,16 @@ const run = async () => {
 
   console.log('the assistant, more than one exchange')
   await withPage(browser, async (page) => {
+    // Put a block on a known future hour first: once the assistant is open, the
+    // calendar behind it cannot be clicked.
+    const placed = await placeOnNextHour(page, 'Rewrite the planner')
+    check(
+      'placed a block on a known hour',
+      placed.landed !== null && Math.abs(placed.landed - placed.target) <= 15,
+      `asked for ${placed.target}, landed ${placed.landed}`,
+    )
+    const clock = placed.clock
+
     await page.locator('nav button:has-text("Assistant")').first().click()
     await page.waitForTimeout(600)
     const ask = async (q) => {
@@ -520,8 +602,8 @@ const run = async () => {
     }
     await ask('what is on today')
     const informational = await page.locator('[role="dialog"]').innerText()
-    // 11:30 has "Landing page copy pass" on it, which the assistant may move.
-    await ask('free up 30 minutes at 11:30')
+    // Ask about that exact window: the check cannot rot as the day moves on.
+    await ask(`free up 30 minutes at ${clock}`)
     const both = await page.locator('[role="dialog"]').innerText()
     check('it answers an informational question', /09:|Landing|Standup|Design/.test(informational), '')
     check('and keeps both exchanges in the transcript', both.length > informational.length, '')
@@ -534,13 +616,34 @@ const run = async () => {
       check('applying one retires them all', (await options.count()) === 0, `${await options.count()} left`)
     }
 
-    // And it will not pretend an hour is free while a meeting is in it.
-    await ask('free up an hour at 13:30')
+  })
+
+  await withPage(browser, async (page) => {
+    // On its own page: an earlier exchange may have moved things, which would
+    // make this check pass or fail for the wrong reason.
+    await page.locator('nav button:has-text("Assistant")').first().click()
+    await page.waitForTimeout(600)
+    await page.locator('[role="dialog"] textarea').fill('free up an hour at 13:30')
+    await page.keyboard.press('Enter')
+    await page.waitForTimeout(1300)
     const honest = await page.locator('[role="dialog"]').innerText()
     check(
-      'and names what it will not move',
-      /Design review/.test(honest) && /cannot move/.test(honest),
-      honest.split('\n').slice(-1)[0]?.slice(0, 90),
+      'and it will not pretend an hour is free while something immovable is in it',
+      /cannot move/.test(honest) && !/Nothing is in the way/.test(honest),
+      honest.split('\n').slice(-3).join(' ').slice(0, 100),
+    )
+
+    // Asked for a window that has already gone, it has to say so rather than
+    // quietly answering for a different hour. This only fails late in the day,
+    // which is why it lives here rather than in the unit tests' happy path.
+    await page.locator('[role="dialog"] textarea').fill('free up an hour at 04:00')
+    await page.keyboard.press('Enter')
+    await page.waitForTimeout(1300)
+    const past = await page.locator('[role="dialog"]').innerText()
+    check(
+      'and it admits when it answers for a different hour',
+      /passed/.test(past) && /looked from now/.test(past),
+      past.split('\n').slice(-3).join(' ').slice(0, 100),
     )
   })
 
@@ -563,6 +666,7 @@ const run = async () => {
   })
 
   await browser.close()
+  server?.kill()
   console.log(
     `\n${failures.length ? `FAILURES (${failures.length}):\n- ${failures.join('\n- ')}` : `all ${passed} interaction checks passed`}`,
   )
