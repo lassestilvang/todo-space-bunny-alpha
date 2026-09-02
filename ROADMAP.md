@@ -14,6 +14,28 @@ more truthful, more drivable, or more honest about time is out of scope.
 
 ## Now
 
+**Tests that do not care what time it is** — `done`. The interaction suite was quietly
+time-dependent: it only ever fully passed in the early morning, because the grid opens
+scrolled to the current hour, so a block at 10:00 was on the window at nine and off it after
+lunch, and two assistant checks asked for hours that had already gone by the time they ran.
+The suite now pins the clock, blocks are scrolled into view before they are grabbed, and the
+assistant is asked about a slot the test just created. Pinning it exposed four real bugs that
+only exist at certain hours:
+
+- Asking to free an hour **at 18:00 when the day ends at 18:00** was silently moved to 17:45,
+  so the assistant answered about the wrong hour and reported the wrong thing.
+- A window that runs off the end of the day was analysed as a fifteen-minute sliver, and the
+  explanation of that was computed *after* the branch that returns, so it never appeared.
+- A window already behind the clock was answered for "now" with no mention that the hour asked
+  for had passed.
+- A block the user had placed by hand was reported as "which I cannot move" — true of the
+  planner, not of the user asking. It is now offered as a move, which is what was wanted.
+  Meetings are still never proposed for a move: they belong to everyone's calendar.
+
+The scripts also start the app themselves now, so a stopped dev server stops being a confusing
+test failure, and vitest is pinned to this tree so an agent worktree's copies cannot inflate
+the counts.
+
 **The habit, note, planner and assistant surfaces** — `done`. Interaction coverage for the
 last four untested surfaces, and one honesty fix they forced. Asked to "free up an hour at
 14:00" while a meeting sat in that hour, the assistant replied "nothing is in the way" —
@@ -166,11 +188,10 @@ never move, and nothing new gets scheduled. See README → *Keeping the plan tru
 
 Not features — things that are wrong or missing and should not be forgotten.
 
-- 145 unit tests (`npm test`) and 45 interaction checks (`npm run verify:actions`) cover
-  every surface in the app: the grid, the detail panel, the filter editor, the habit and
-  note editors, the planner sheet, the assistant and the shortcuts, in a real browser. What
-  is still uncovered is anything that only breaks on a second machine: a narrow window, a
-  timezone other than the one it was written in, or a very large workspace.
+- 149 unit tests (`npm test`) and 47 interaction checks (`npm run verify:actions`) cover
+  every surface in the app, on a pinned clock. Still uncovered: a narrow window, a second
+  timezone, and a workspace an order of magnitude larger than the sample — the three things
+  that need a different kind of harness rather than more assertions.
 - The assistant negotiates about *today* only. "Free up an hour tomorrow morning" is read
   as today, which is the wrong answer rather than a refusal — worth a day parameter before
   anyone relies on it.
