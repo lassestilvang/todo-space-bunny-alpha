@@ -14,6 +14,18 @@ more truthful, more drivable, or more honest about time is out of scope.
 
 ## Now
 
+**Three hundred filters, four hundred events and habits** — `done`. The last gap on this
+list, and the environment harness grew two groups for it: three hundred saved filters, and
+a workspace of two hundred events plus two hundred habits rather than tasks. Both hold —
+a change still settles quickly with the filters in the sidebar, and the planner answers
+promptly in a day crowded with immovable meetings and habit anchors. The habits and
+meetings are the part that matters, since both feed the planner's busy calculation.
+
+While measuring, one confusing behaviour turned up that was not a performance problem at
+all: the Today badge counts what is **at risk**, not what is open, so finishing a task
+left the number where it was and looked stuck. That was a deliberate choice from the
+risk work, so the fix is to explain it — the row now says what its number means on hover.
+
 **Narrow windows, other timezones, a thousand tasks** — `done`. The last three things
 that could only break elsewhere, checked with a new harness (`npm run verify:env`, 44
 assertions) because they need different setups rather than more assertions: viewport
@@ -200,11 +212,13 @@ never move, and nothing new gets scheduled. See README → *Keeping the plan tru
 
 Not features — things that are wrong or missing and should not be forgotten.
 
-- 149 unit tests (`npm test`), 47 interaction checks (`npm run verify:actions`) and 44
+- 149 unit tests (`npm test`), 47 interaction checks (`npm run verify:actions`) and 52
   environment checks (`npm run verify:env`) cover the logic, every surface on a pinned
-  clock, six window widths, three timezones and a thousand tasks. What is still uncovered
-  is behaviour rather than robustness: a user with five hundred of *their own* filters,
-  and a workspace of events and habits rather than tasks.
+  clock, six window widths, three timezones, a thousand tasks, three hundred filters and
+  four hundred events and habits.
+- The sidebar has no cap on how many filters it will list, which is fine for the handful
+  anyone actually keeps and a long scroll for anyone who is not. Worth a cap or a
+  collapsible group if filter counts ever grow.
 - The assistant negotiates about *today* only. "Free up an hour tomorrow morning" is read
   as today, which is the wrong answer rather than a refusal — worth a day parameter before
   anyone relies on it.
