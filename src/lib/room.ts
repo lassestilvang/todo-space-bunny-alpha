@@ -73,7 +73,11 @@ export function parseRoomRequest(text: string, settings: Settings, now: number) 
       from = defaultFrom(settings, now)
       rolledForward = true
     } else {
-      from = Math.min(Math.max(asked, 0), settings.workEnd - 15)
+      // The start is clamped to the working day and no further: capping it at
+      // "workEnd minus a step" quietly moved a request for 18:00 to 17:45 and
+      // then answered about the wrong hour. A window that runs off the end of
+      // the day is trimmed, and says so, rather than moving the question.
+      from = Math.min(Math.max(asked, 0), settings.workEnd)
     }
   } else if (/afternoon/.test(lower)) from = Math.max(settings.workStart, 13 * 60)
   else if (/morning/.test(lower)) from = settings.workStart
@@ -82,11 +86,19 @@ export function parseRoomRequest(text: string, settings: Settings, now: number) 
   return { need, from, rolledForward }
 }
 
-/** Task blocks on one day, split into the ones the planner owns and the rest. */
+/**
+ * Task blocks on one day.
+ *
+ * Both kinds can be *proposed* for a move. A hand-placed block is off limits to
+ * the planner, but the user put it there and is now asking for room — offering to
+ * shift it is the point of the question. Meetings are excluded: they are free for
+ * everyone else's calendar too, and moving one is not this flow's business.
+ */
 function blocksOn(tasks: Task[], key: string) {
   const onDay = tasks.filter((t) => !t.completed && t.scheduled && toKey(t.scheduled.start) === key)
   const movable = onDay.filter((t) => !t.planLocked)
-  return { onDay, movable }
+  const handPlaced = onDay.filter((t) => t.planLocked)
+  return { onDay, movable, candidates: [...movable, ...handPlaced] }
 }
 
 const overlaps = (iv: Interval, from: number, to: number) => iv.start < to && iv.end > from
@@ -102,12 +114,7 @@ const clockOf = (t: number): number => {
  * habit anchors and blocks the user placed by hand. Naming these is the
  * difference between "nothing is in the way" and an honest answer.
  */
-function immovableIn(
-  window: Interval,
-  tasks: Task[],
-  events: CalEvent[],
-  habits: Habit[],
-): string[] {
+function immovableIn(window: Interval, events: CalEvent[], habits: Habit[]): string[] {
   const out: string[] = []
   for (const e of events) {
     if (e.allDay) continue
@@ -119,12 +126,6 @@ function immovableIn(
     if (h.anchorMin === null) continue
     if (overlaps({ start: h.anchorMin, end: h.anchorMin + h.durationMin }, window.start, window.end))
       out.push(h.name)
-  }
-  for (const t of tasks) {
-    if (!t.scheduled || !t.planLocked || t.completed) continue
-    const s = clockOf(t.scheduled.start)
-    const en = clockOf(t.scheduled.end)
-    if (overlaps({ start: s, end: en }, window.start, window.end)) out.push(t.title)
   }
   return out
 }
@@ -150,20 +151,30 @@ export function proposeRoom(
   const dayStart = atMinutes(day, 0)
 
   const fixed = fixedBusy(input, day)
-  const { movable } = blocksOn(tasks, key)
+  const { candidates } = blocksOn(tasks, key)
   const window = { start: from, end: Math.min(from + need, settings.workEnd) }
   const notes: string[] = []
   if (rolledForward) notes.push('That time has already passed today, so I looked from now.')
 
   // Blocks the planner owns, as clock intervals.
-  const owned: Interval[] = movable.map((t) => ({
+  const owned: Interval[] = candidates.map((t) => ({
     start: (t.scheduled!.start - dayStart) / MIN,
     end: (t.scheduled!.end - dayStart) / MIN,
   }))
   const work: Interval[] =
     isWorkday(settings, day) ? [{ start: settings.workStart, end: settings.workEnd }] : []
 
-  const inTheWay = movable
+  // Say it while it is still true: a window that runs off the end of the day is
+  // shorter than what was asked for, and the reply has to admit that.
+  if (window.end - window.start < need) {
+    notes.push(
+      `Your working day ends at ${clockLabel(settings.workEnd)}, so that leaves ${Math.round(
+        window.end - window.start,
+      )} minutes rather than ${need}.`,
+    )
+  }
+
+  const inTheWay = candidates
     .map((t) => ({ task: t, iv: owned.find((o) => Math.round(o.start * MIN) === t.scheduled!.start - dayStart)! }))
     .filter((x) => x.iv && overlaps(x.iv, window.start, window.end))
     // Least important first: priority 4 before 1, then the shorter block.
@@ -176,7 +187,7 @@ export function proposeRoom(
     gaps.length > 0 ? gaps.reduce((a, b) => (b.end - b.start > a.end - a.start ? b : a)) : null
 
   if (!inTheWay.length) {
-    const standing = immovableIn(window, tasks, events, habits)
+    const standing = immovableIn(window, events, habits)
     const alternative = biggestGap
       ? ` The nearest opening is ${clockLabel(biggestGap.start)}–${clockLabel(biggestGap.end)}, ${Math.round(biggestGap.end - biggestGap.start)} minutes.`
       : ' There is no opening left in your working day either.'
@@ -187,7 +198,10 @@ export function proposeRoom(
       window,
       proposals: [],
       biggestGap,
+      // Keep anything already said: the note that explains a rolled-forward
+      // window matters as much as the answer itself.
       notes: [
+        ...notes,
         standing.length
           ? // Honest: the hour is taken, but by something I am not allowed to move.
             `${clockLabel(window.start)}–${clockLabel(window.end)} is ${listNames(standing)}, which I cannot move.${alternative}`
@@ -249,10 +263,6 @@ export function proposeRoom(
       `Also in the way: ${others.map((o) => `“${o.task.title}”`).join(', ')}. Freeing this window means moving one of them.`,
     )
   }
-  if (window.end - window.start < need) {
-    notes.push(`There is only ${Math.round(window.end - window.start)} minutes left in your working day from ${clockLabel(from)}.`)
-  }
-
   return { need, from, day: key, window, proposals, biggestGap, notes }
 }
 
