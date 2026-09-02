@@ -79,8 +79,9 @@ text never silently moves the block.
 ## Everything else
 
 - **Saved filters** — a named question about your tasks, kept so you can ask it again.
-  Conditions on project, label, priority, due window, whether it is on the clock, and
-  energy, combined with *and*. Filters live in the sidebar with a live count, take the
+  Conditions on project, folder, label, priority, due window, whether it is on the clock,
+  and energy, combined with *and*. Deleting a project, folder or label drops the conditions
+  that pointed at it, so a filter never quietly matches nothing. Filters live in the sidebar with a live count, take the
   number keys after the fixed views, and travel with your export.
 - **Quick capture** parses `#project`, `@label`, `!1`–`!4`, `tomorrow`, `at 9:30`, `for 45m`, `every tue`, and shows a live reading of what it understood. Typed times may be 12- or 24-hour; everything Tempo *shows* is 24-hour, including the time fields — there is no native time input left in the app.
 - **Views**: day, week, month, agenda (7/14/21 days), inbox/today/upcoming lists, saved
