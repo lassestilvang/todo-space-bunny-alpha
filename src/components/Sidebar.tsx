@@ -208,6 +208,11 @@ export function Sidebar() {
   }
 
   const riskyFor = (id: ViewId) => id === 'today' && todayRisk > 0
+  // The Today badge counts what is *at risk* rather than what is open, so say so.
+  const riskTitle = (id: ViewId) =>
+    riskyFor(id)
+      ? 'At risk: due with no time on the clock, or finishing after its due date'
+      : undefined
 
   const createProject = () => {
     const name = projectName.trim()
@@ -267,6 +272,7 @@ export function Sidebar() {
               active={view === n.id || (activeProject === 'all' && view === n.id)}
               count={countFor(n.id)}
               risky={riskyFor(n.id)}
+              title={riskTitle(n.id)}
               onClick={() => setView(n.id)}
             />
           ))}
@@ -618,6 +624,7 @@ function NavRow({
   collapsed,
   count,
   risky,
+  title,
   onClick,
   onEdit,
 }: {
@@ -626,6 +633,7 @@ function NavRow({
   collapsed: boolean
   count?: number | null
   risky?: boolean
+  title?: string
   onClick: () => void
   onEdit?: () => void
 }) {
@@ -639,7 +647,7 @@ function NavRow({
     >
       <button
         onClick={onClick}
-        title={collapsed ? item.label : undefined}
+        title={title ?? (collapsed ? item.label : undefined)}
         aria-current={active ? 'page' : undefined}
         className={cn(
           'press flex min-w-0 flex-1 items-center gap-2.5 px-2 py-[6px] text-left text-[12.5px]',
