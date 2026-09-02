@@ -14,6 +14,18 @@ more truthful, more drivable, or more honest about time is out of scope.
 
 ## Now
 
+**Narrow windows, other timezones, a thousand tasks** — `done`. The last three things
+that could only break elsewhere, checked with a new harness (`npm run verify:env`, 44
+assertions) because they need different setups rather than more assertions: viewport
+sweeps, `timezoneId` contexts, and a seeded thousand-task workspace. It found one real
+problem: the day rail is a fixed 292px, so at 760px the calendar — the product — had
+**184px** and each week column 26px, wide enough for two characters. The rail now steps
+aside below 960px, which gives the grid 476px and week columns 68px at 760px, and changes
+nothing at 1024px or wider. The planner and the risk count stay reachable from the top bar
+and the palette. Everything else held: no errors at any width, no sideways scroll, every
+block under the right date header in Tokyo, New York and Sydney, and a thousand tasks
+booting in under a second with the list view rendering all 860 open ones in 2.6 s.
+
 **Tests that do not care what time it is** — `done`. The interaction suite was quietly
 time-dependent: it only ever fully passed in the early morning, because the grid opens
 scrolled to the current hour, so a block at 10:00 was on the window at nine and off it after
@@ -188,10 +200,11 @@ never move, and nothing new gets scheduled. See README → *Keeping the plan tru
 
 Not features — things that are wrong or missing and should not be forgotten.
 
-- 149 unit tests (`npm test`) and 47 interaction checks (`npm run verify:actions`) cover
-  every surface in the app, on a pinned clock. Still uncovered: a narrow window, a second
-  timezone, and a workspace an order of magnitude larger than the sample — the three things
-  that need a different kind of harness rather than more assertions.
+- 149 unit tests (`npm test`), 47 interaction checks (`npm run verify:actions`) and 44
+  environment checks (`npm run verify:env`) cover the logic, every surface on a pinned
+  clock, six window widths, three timezones and a thousand tasks. What is still uncovered
+  is behaviour rather than robustness: a user with five hundred of *their own* filters,
+  and a workspace of events and habits rather than tasks.
 - The assistant negotiates about *today* only. "Free up an hour tomorrow morning" is read
   as today, which is the wrong answer rather than a refusal — worth a day parameter before
   anyone relies on it.
