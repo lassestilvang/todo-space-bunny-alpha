@@ -332,6 +332,65 @@ describe('repeating meetings', () => {
   })
 })
 
+describe('references stay honest when things are deleted', () => {
+  it('drops a project clause that pointed at a deleted project', async () => {
+    const s = await worldWith([])
+    const project = s.getState().addProject({ name: 'Studio' })
+    const filter = s.getState().addFilter({
+      name: 'Studio work',
+      clauses: [{ kind: 'project', id: project }, { kind: 'priority', priority: 1 }],
+    })
+    s.getState().deleteProject(project)
+    const kept = s.getState().filters[filter]
+    // Left dangling, the filter would silently match nothing at all.
+    expect(JSON.stringify(kept.clauses)).not.toContain(project)
+    // The rest of the question survives, so the filter still means something.
+    expect(kept.clauses).toEqual([{ kind: 'priority', priority: 1 }])
+  })
+
+  it('drops a label clause when the label goes, and can be undone', async () => {
+    const s = await worldWith([])
+    const label = s.getState().addLabel('errand', 'c-rose')
+    const filter = s.getState().addFilter({
+      name: 'Errands',
+      clauses: [{ kind: 'label', id: label }],
+    })
+    const depth = s.getState().history.past.length
+    s.getState().deleteLabel(label)
+    expect(s.getState().filters[filter].clauses).toEqual([])
+    expect(s.getState().history.past.length).toBe(depth + 1)
+    s.getState().undo()
+    expect(Object.keys(s.getState().labels)).toContain(label)
+    expect(s.getState().filters[filter].clauses).toEqual([{ kind: 'label', id: label }])
+  })
+
+  it('drops a folder clause when the folder goes', async () => {
+    const s = await worldWith([])
+    const folder = s.getState().addFolder({ name: 'Work' })
+    const filter = s.getState().addFilter({
+      name: 'In Work',
+      clauses: [{ kind: 'folder', id: folder }],
+    })
+    s.getState().deleteFolder(folder)
+    expect(s.getState().filters[filter].clauses).toEqual([])
+  })
+
+  it('un-assigns the tasks of a deleted project and forgets the label', async () => {
+    const s = await worldWith([])
+    const project = s.getState().addProject({ name: 'Studio' })
+    const label = s.getState().addLabel('errand', 'c-rose')
+    const id = s.getState().addTask({
+      title: 'Mine',
+      projectId: project,
+      labelIds: [label],
+    })
+    s.getState().deleteProject(project)
+    expect(s.getState().tasks[id].projectId).toBeUndefined()
+    s.getState().deleteLabel(label)
+    expect(s.getState().tasks[id].labelIds).toEqual([])
+  })
+})
+
 describe('folders', () => {
   it('lose their projects when deleted, but keep the projects', async () => {
     const s = await worldWith([])
