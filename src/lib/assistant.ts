@@ -14,6 +14,8 @@ import { proposeRoom, roomReply } from './room'
 
 export type AssistantAction =
   | { type: 'add'; title: string; due?: string; start?: number; end?: number; priority?: number; project?: string; durationMin?: number }
+  /** Book time on the calendar rather than filing a task to do. */
+  | { type: 'event'; title: string; start: number; end: number; project?: string }
   | { type: 'schedule'; match: string; when: string; durationMin?: number }
   | { type: 'unschedule'; match: string }
   | { type: 'complete'; match: string }
@@ -99,7 +101,13 @@ export function buildContext(): string {
 
 function findTask(match: string): Task | undefined {
   const s = useStore.getState()
-  const m = match.trim().toLowerCase()
+  // "done with the copy" names a task as "the copy"; the connective is not
+  // part of its name, and leaving it on means nothing ever matches.
+  const m = match
+    .trim()
+    .toLowerCase()
+    .replace(/^(?:with|on|for|about)\s+/, '')
+    .replace(/\s+(?:please|one)$/, '')
   const open = Object.values(s.tasks).filter((t) => !t.completed)
   return (
     open.find((t) => t.title.toLowerCase() === m) ??
@@ -143,6 +151,14 @@ export function applyActions(actions: AssistantAction[]): string[] {
           planLocked: !!a.start,
         })
         done.push(`Added “${a.title}”`)
+        break
+      }
+      case 'event': {
+        const project = a.project
+          ? Object.values(s.projects).find((p) => p.name.toLowerCase() === a.project!.toLowerCase())?.id
+          : undefined
+        s.addEvent({ title: a.title, start: a.start, end: a.end, projectId: project })
+        done.push(`Booked “${a.title}”`)
         break
       }
       case 'schedule': {
@@ -316,6 +332,37 @@ function localRespond(input: string): AssistantReply | null {
   }
 
   /* add a task: "add/remember/new …" */
+  // A meeting belongs on the calendar; a task belongs in a list. The words say
+  // which one the user means, and the chips above the input say it back before
+  // anything is booked.
+  const MEETING_WORDS =
+    /\b(meeting|call|appointment|coffee|lunch with|dinner with|1:1|one-on-one|stand-?up|sync|review with|interview|workshop)\b/
+  if (MEETING_WORDS.test(lower)) {
+    const p = parseInput(q.replace(MEETING_WORDS, '').replace(/\bwith\b/i, '').trim())
+    const start = p.scheduledStart
+    if (start) {
+      const length = p.durationMin || p.scheduledEnd ? (p.scheduledEnd! - start) / 60000 : 30
+      return {
+        reply: `Booked “${p.title}” for ${length} minutes at ${fmtTime(start)} on ${toKey(start)}.${
+          p.projects[0] ? ` Filed under ${p.projects[0]}.` : ''
+        }`,
+        actions: [
+          {
+            type: 'event',
+            title: p.title,
+            start,
+            end: p.scheduledEnd ?? start + length * 60000,
+            project: p.projects[0],
+          },
+        ],
+      }
+    }
+    return {
+      reply: `“${p.title}” sounds like a meeting, but I need a time to book it. Say when — “meeting with Ana tuesday at 2pm”.`,
+      actions: [],
+    }
+  }
+
   if (/^(add|remember|new|create|capture|remind me to)\b/.test(lower)) {
     const rest = q.replace(/^(add|remember|new|create|capture|remind me to)\s+/i, '')
     const p = parseInput(rest)
@@ -342,28 +389,32 @@ function localRespond(input: string): AssistantReply | null {
   }
 
   /* schedule a task */
-  const sched = /^(schedule|block|put|move)\s+(.+?)\s+(?:for\s+)?(.*)$/i.exec(q)
+  const sched = /^(schedule|block|put|move)\s+(.+)$/i.exec(q)
   if (sched) {
-    const match = sched[2]
-    const whenRaw = sched[3] || 'tomorrow at 9am'
-    const t = findTask(match)
+    // People say this either way round: "block the memo for 45 minutes tomorrow"
+    // and "block 45 minutes for the memo tomorrow" name the same thing. The
+    // parser pulls the time out wherever it sits, so the rest is the task.
+    const phrase = parseInput(sched[2])
+    const asked = /\b(?:for\s+)?(\d+)\s*(m|min|mins|minute|minutes|h|hr|hrs|hour|hours)\b/i.exec(
+      sched[2],
+    )
+    const durationMin = asked
+      ? asked[2][0].toLowerCase() === 'h'
+        ? Number(asked[1]) * 60
+        : Number(asked[1])
+      : undefined
+    const t = findTask(phrase.title)
     if (t) {
-      const when = parseInput(whenRaw)
-      let whenText = whenRaw
-      const wk = WEEK_RE.exec(whenRaw)
-      if (wk) {
-        const target = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'].indexOf(wk[2].toLowerCase())
-        const base = new Date()
-        const delta = (target - base.getDay() + 7) % 7
-        const d = addDays(base, wk[1] ? delta || 7 : delta)
-        whenText = `${toKey(d)} ${when.due ? fmtTime(when.scheduledStart ?? d.getTime() + 9 * 36e5) : 'at 9am'}`
-      }
+      const whenText = phrase.scheduledStart !== undefined ? sched[2] : 'tomorrow at 9am'
+      // The parser owns weekday arithmetic; no second copy of it here.
       const p2 = parseInput(whenText)
       return {
         reply: `Moved “${t.title}” to ${p2.scheduledStart ? fmtTime(p2.scheduledStart) : 'the top of the day'}${
           p2.scheduledStart ? ` on ${toKey(p2.scheduledStart)}` : ''
-        }, keeping its ${t.durationMin}-minute estimate.`,
-        actions: [{ type: 'schedule', match: t.title, when: whenText, durationMin: t.durationMin }],
+        }, keeping its ${durationMin ?? t.durationMin}-minute estimate.`,
+        actions: [
+          { type: 'schedule', match: t.title, when: whenText, durationMin: durationMin ?? t.durationMin },
+        ],
       }
     }
   }
@@ -408,7 +459,15 @@ function localRespond(input: string): AssistantReply | null {
     const hits = open.filter((t) => t.title.toLowerCase().includes(term)).slice(0, 8)
     if (hits.length) {
       return {
-        reply: `${hits.length} match${hits.length === 1 ? '' : 'es'} for “${term}”.`,
+        // Naming the matches matters: "1 match for passport" tells the user
+        // nothing they can act on.
+        reply: hits.length === 1
+          ? `“${hits[0].title}” — ${hits[0].due ? `due ${hits[0].due}` : 'no date'}${
+              hits[0].scheduled
+                ? `, on the clock at ${fmtTime(hits[0].scheduled.start)}`
+                : ', not on the clock yet'
+            }.`
+          : `${hits.length} matches for “${term}”: ${hits.map((t) => `“${t.title}”`).join(', ')}.`,
         actions: [],
         data: {
           kind: 'list',
