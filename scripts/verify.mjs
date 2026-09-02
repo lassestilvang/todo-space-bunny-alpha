@@ -1,5 +1,6 @@
 /* Visual + runtime smoke test. Not part of the app bundle. */
 import { chromium } from 'playwright'
+import { ensureServer } from './serve.mjs'
 
 const URL = process.env.URL ?? 'http://localhost:5180'
 const OUT = process.env.OUT ?? '/tmp/tempo'
@@ -124,6 +125,7 @@ const shots = [
 ]
 
 const run = async () => {
+  const server = await ensureServer(URL)
   const browser = await chromium.launch({
     executablePath:
       process.env.CHROME_PATH ??
@@ -150,6 +152,7 @@ const run = async () => {
 
   console.log(errors.length ? 'ISSUES:\n' + [...new Set(errors)].join('\n') : 'clean: no console errors')
   await browser.close()
+  server?.kill()
 }
 
 run()
