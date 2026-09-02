@@ -348,6 +348,67 @@ describe('references stay honest when things are deleted', () => {
     expect(kept.clauses).toEqual([{ kind: 'priority', priority: 1 }])
   })
 
+  it('records when a filter lost its whole subject', async () => {
+    const s = await worldWith([])
+    const project = s.getState().addProject({ name: 'Studio' })
+    const filter = s.getState().addFilter({
+      name: 'Studio work',
+      clauses: [{ kind: 'project', id: project }],
+    })
+    s.getState().deleteProject(project)
+    // "Studio work" has quietly become "everything"; the filter must say so.
+    expect(s.getState().filters[filter].widened).toMatch(/Studio/)
+  })
+
+  it('stays quiet when only one of several conditions is lost', async () => {
+    const s = await worldWith([])
+    const project = s.getState().addProject({ name: 'Studio' })
+    const filter = s.getState().addFilter({
+      name: 'Studio deep work',
+      clauses: [{ kind: 'project', id: project }, { kind: 'energy', energy: 'deep' }],
+    })
+    s.getState().deleteProject(project)
+    expect(s.getState().filters[filter].widened).toBeUndefined()
+    expect(s.getState().filters[filter].clauses).toEqual([{ kind: 'energy', energy: 'deep' }])
+  })
+
+  it('stops warning once the filter is edited', async () => {
+    const s = await worldWith([])
+    const project = s.getState().addProject({ name: 'Studio' })
+    const filter = s.getState().addFilter({
+      name: 'Studio work',
+      clauses: [{ kind: 'project', id: project }],
+    })
+    s.getState().deleteProject(project)
+    expect(s.getState().filters[filter].widened).toBeTruthy()
+    s.getState().updateFilter(filter, { clauses: [{ kind: 'priority', priority: 2 }] })
+    expect(s.getState().filters[filter].widened).toBeUndefined()
+  })
+
+  it('undoes an edited filter', async () => {
+    const s = await worldWith([])
+    const filter = s.getState().addFilter({
+      name: 'Mine',
+      clauses: [{ kind: 'priority', priority: 2 }],
+    })
+    s.getState().updateFilter(filter, { name: 'Renamed' })
+    expect(s.getState().filters[filter].name).toBe('Renamed')
+    s.getState().undo()
+    expect(s.getState().filters[filter].name).toBe('Mine')
+  })
+
+  it('undoes a deleted filter', async () => {
+    const s = await worldWith([])
+    const filter = s.getState().addFilter({
+      name: 'Mine',
+      clauses: [{ kind: 'priority', priority: 2 }],
+    })
+    s.getState().deleteFilter(filter)
+    expect(s.getState().filters[filter]).toBeUndefined()
+    s.getState().undo()
+    expect(s.getState().filters[filter]?.name).toBe('Mine')
+  })
+
   it('drops a label clause when the label goes, and can be undone', async () => {
     const s = await worldWith([])
     const label = s.getState().addLabel('errand', 'c-rose')
