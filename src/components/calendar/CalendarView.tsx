@@ -18,6 +18,8 @@ import {
   WEEKDAYS_SHORT,
 } from '@/lib/date'
 import { layoutItems, toItems, tasksOnDay } from '@/lib/selectors'
+import type { DropPayload } from '@/lib/drag'
+import { clearItemPayload, setItemPayload } from '@/lib/drag'
 
 export function CalendarView({
   onPlan,
@@ -127,20 +129,28 @@ export function CalendarView({
     [addTask, setCapture, setPanel, toast],
   )
 
-  const dropTask = useCallback(
-    (taskId: string, day: Date, start: number) => {
-      const t = tasks[taskId]
-      if (!t) return
-      const dur = t.durationMin || 30
+  const dropItem = useCallback(
+    (payload: DropPayload, day: Date, start: number) => {
       const startAt = atMinutes(day, start)
-      updateTask(taskId, {
-        scheduled: { start: startAt, end: startAt + dur * MIN },
+      const endAt = startAt + payload.minutes * MIN
+      if (payload.kind === 'event') {
+        updateEvent(payload.id, { start: startAt, end: endAt, allDay: false })
+        toast({ text: `${payload.title} moved to ${fmtTime(startAt)}`, kind: 'ok' })
+        return
+      }
+      const task = tasks[payload.id]
+      if (!task) return
+      updateTask(payload.id, {
+        title: payload.title,
+        scheduled: { start: startAt, end: endAt },
         due: toKey(day),
         dueHasTime: true,
+        durationMin: payload.minutes,
         planLocked: true,
       })
+      toast({ text: `${payload.title} scheduled ${fmtTime(startAt)}`, kind: 'ok' })
     },
-    [tasks, updateTask],
+    [tasks, updateTask, updateEvent, toast],
   )
 
   const contextFor = useCallback(
@@ -204,7 +214,7 @@ export function CalendarView({
   return (
     <div className="flex min-h-0 flex-1">
       <div className="flex min-w-0 flex-1 flex-col">
-        <DayHeaderStrip days={days} allDay={allDayItems} floaters={floaters} mode={mode} anchor={anchor} />
+        <DayHeaderStrip days={days} allDay={allDayItems} floaters={floaters} mode={mode} anchor={anchor} nowMs={now} />
         <TimeGrid
           days={days}
           items={items}
@@ -218,7 +228,7 @@ export function CalendarView({
           onMove={moveItem}
           onCreate={create}
           onContext={contextFor}
-          onDropTask={dropTask}
+          onDropItem={dropItem}
         />
       </div>
       <DayRail day={railDay} floaters={floaters} onPlan={onPlan} />
@@ -233,17 +243,20 @@ function DayHeaderStrip({
   floaters,
   mode,
   anchor,
+  nowMs,
 }: {
   days: Date[]
   allDay: CalendarItem[]
   floaters: { id: string; title: string }[]
   mode: 'day' | 'week'
   anchor: string
+  nowMs: number
 }) {
   const setAnchor = useStore((s) => s.setAnchor)
   const setView = useStore((s) => s.setView)
   const setPanel = useStore((s) => s.setPanel)
   const tasks = useStore((s) => s.tasks)
+  const thisYear = new Date(nowMs).getFullYear()
 
   return (
     <div className="shrink-0 border-b border-line bg-bg">
@@ -291,7 +304,7 @@ function DayHeaderStrip({
                   </button>
                   {mode === 'week' && (
                     <span className="mono-clock ml-auto text-[9.5px] text-ink-4">
-                      {MONTHS_SHORT[d.getMonth()]} {d.getFullYear() === new Date().getFullYear() ? '' : d.getFullYear()}
+                      {MONTHS_SHORT[d.getMonth()]} {d.getFullYear() === thisYear ? '' : d.getFullYear()}
                     </span>
                   )}
                 </div>
@@ -301,8 +314,18 @@ function DayHeaderStrip({
                     {dayAllDay.map((a) => (
                       <button
                         key={a.id}
+                        draggable
+                        onDragStart={(e) => {
+                          // A multi-day span cannot become a time block; give
+                          // it an hour instead of pretending it fits.
+                          const span = Math.round((a.end - a.start) / MIN)
+                          const minutes = span > 0 && span <= 12 * 60 ? Math.max(15, span) : 60
+                          setItemPayload(e, { kind: 'event', id: a.id, minutes, title: a.title })
+                        }}
+                        onDragEnd={clearItemPayload}
                         onClick={() => setPanel(a.kind === 'task' ? { kind: 'task', id: a.id } : { kind: 'event', id: a.id })}
-                        className="press max-w-full truncate rounded-full border px-2 py-[2px] text-[10px]"
+                        title="Drag onto the grid to give it a time"
+                        className="press max-w-full cursor-grab truncate rounded-full border px-2 py-[2px] text-[10px] hover:brightness-110 active:cursor-grabbing"
                         style={{
                           borderColor: 'var(--line-2)',
                           color: 'var(--ink-2)',
@@ -315,8 +338,19 @@ function DayHeaderStrip({
                     {dayFloat.map((f) => (
                       <button
                         key={f.id}
+                        draggable
+                        onDragStart={(e) =>
+                          setItemPayload(e, {
+                            kind: 'task',
+                            id: f.id,
+                            minutes: tasks[f.id]?.durationMin || 30,
+                            title: f.title,
+                          })
+                        }
+                        onDragEnd={clearItemPayload}
                         onClick={() => setPanel({ kind: 'task', id: f.id })}
-                        className="press flex max-w-full items-center gap-1 rounded-full border border-dashed border-line-2 px-2 py-[2px] text-[10px] text-ink-3 hover:text-ink"
+                        title="Drag onto the grid to schedule it"
+                        className="press flex max-w-full cursor-grab items-center gap-1 rounded-full border border-dashed border-line-2 px-2 py-[2px] text-[10px] text-ink-3 hover:text-ink hover:brightness-110 active:cursor-grabbing"
                       >
                         <span className="truncate">{f.title}</span>
                       </button>
