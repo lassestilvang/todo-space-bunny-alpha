@@ -59,8 +59,8 @@ Most task apps separate *what you want to do* from *when you will do it*, then l
 - **Quick capture** parses `#project`, `@label`, `!1`–`!4`, `tomorrow`, `at 9:30`, `for 45m`, `every tue`, and shows a live reading of what it understood.
 - **Views**: day, week, month, agenda (7/14/21 days), inbox/today/upcoming lists, Eisenhower matrix, project board, habits, notes, review.
 - **Habits** with daily/weekdays/weekly/custom cadence, anchors, streaks, and honest counts.
-- **Focus timer** with rounds and long breaks. Timer state lives outside React, so closing the panel never interrupts a run. Finished focus blocks are logged as store records; break sessions never pollute the numbers.
-- **Assistant** works offline against a deterministic intent engine (add, schedule, unschedule, complete, delete, priority, plan). Supply an Anthropic or OpenAI key in Settings if you want model-written replies.
+- **Focus timer** with rounds and long breaks, opened from the sidebar pill as a modal. Timer state lives outside React, so closing the dialog never interrupts a run. Finished focus blocks are logged as store records; break sessions never pollute the numbers.
+- **Assistant** works offline against a deterministic intent engine (add, schedule, unschedule, complete, delete, priority, plan). It opens as a modal. Supply an Anthropic or OpenAI key in Settings if you want model-written replies.
 - **Review** reports where time actually went, counting completed sessions at their planned length and abandoned ones at zero.
 - **Undo/redo** across 60 steps, including planner applications and drops.
 - Markdown rendering builds React elements only — no HTML strings, links limited to `http`/`https`/`mailto`.
