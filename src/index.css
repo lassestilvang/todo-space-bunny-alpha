@@ -313,16 +313,6 @@
       opacity: 1;
     }
   }
-  @keyframes slide-left {
-    from {
-      opacity: 0;
-      transform: translateX(12px);
-    }
-    to {
-      opacity: 1;
-      transform: none;
-    }
-  }
   @keyframes pop {
     from {
       opacity: 0;
@@ -357,9 +347,6 @@
   }
   .anim-fade {
     animation: fade 200ms ease both;
-  }
-  .anim-slide-left {
-    animation: slide-left 260ms var(--ease-out-expo) both;
   }
   .anim-pop {
     animation: pop 180ms var(--ease-out-expo) both;
