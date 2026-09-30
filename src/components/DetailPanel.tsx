@@ -37,7 +37,7 @@ import {
   toKey,
 } from '@/lib/date'
 import { cn, cssColor, minutesLabel } from '@/lib/selectors'
-import { Btn, Checkbox, IconBtn, Input, Seg } from './ui'
+import { Btn, Checkbox, IconBtn, Input, Modal, Seg } from './ui'
 import { Markdown } from './Markdown'
 import { uid } from '@/lib/id'
 
@@ -952,18 +952,19 @@ function PanelShell({
   accent?: string
 }) {
   return (
-    <div className="anim-slide-left relative z-40 flex w-[380px] shrink-0 flex-col border-l border-line bg-bg">
-      <div className="flex h-14 shrink-0 items-center justify-between border-b border-line px-4">
+    <Modal
+      open
+      onClose={onClose}
+      width={620}
+      title={
         <span className="flex items-center gap-2 text-[10.5px] font-semibold uppercase tracking-[0.14em] text-ink-4">
           {accent && <span className="size-[7px] rounded-full" style={{ background: accent }} />}
           {label}
         </span>
-        <IconBtn label="Close panel" onClick={onClose}>
-          <X size={15} />
-        </IconBtn>
-      </div>
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">{children}</div>
-    </div>
+      }
+    >
+      <div className="px-4 py-4">{children}</div>
+    </Modal>
   )
 }
 
