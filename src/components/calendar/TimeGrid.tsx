@@ -12,6 +12,7 @@ import { Lock, Sparkles } from 'lucide-react'
 import type { CalendarItem } from '@/types'
 import { MIN, atMinutes, clamp, fmtTime, isToday, snap } from '@/lib/date'
 import { cn, type Positioned } from '@/lib/selectors'
+import { activeItemPayload, hasItemPayload, readItemPayload, type DropPayload } from '@/lib/drag'
 
 export const GUTTER = 56
 export const MIN_BLOCK = 10
@@ -37,7 +38,8 @@ export type TimeGridProps = {
   onMove: (id: string, start: number, end: number) => void
   onCreate: (day: Date, start: number, end: number, title?: string) => void
   onContext: (item: CalendarItem, x: number, y: number) => void
-  onDropTask?: (taskId: string, day: Date, start: number) => void
+  /** Schedules a dragged task or all-day event at a specific time. */
+  onDropItem?: (payload: DropPayload, day: Date, startMin: number) => void
 }
 
 export function TimeGrid({
@@ -54,7 +56,7 @@ export function TimeGrid({
   onMove,
   onCreate,
   onContext,
-  onDropTask,
+  onDropItem,
 }: TimeGridProps) {
   const pxPerMin = pxPerHour / 60
   const totalMin = gridEnd - gridStart
@@ -74,6 +76,20 @@ export function TimeGrid({
   const [composer, setComposer] = useState<{ day: number; start: number; end: number } | null>(null)
   const [composeText, setComposeText] = useState('')
   const composeRef = useRef<HTMLInputElement>(null)
+
+  /** Where a dragged task or all-day event would land if released now. */
+  const [dropAt, setDropAt] = useState<{ day: number; start: number; payload: DropPayload } | null>(null)
+
+  // A drag that ends anywhere else (outside the grid) must not leave a ghost.
+  useEffect(() => {
+    const onEnd = () => setDropAt(null)
+    window.addEventListener('dragend', onEnd)
+    window.addEventListener('drop', onEnd)
+    return () => {
+      window.removeEventListener('dragend', onEnd)
+      window.removeEventListener('drop', onEnd)
+    }
+  }, [])
 
   /* ------------------------------------------------------------------ scroll */
 
@@ -211,6 +227,19 @@ export function TimeGrid({
   const nowMin = new Date(now).getHours() * 60 + new Date(now).getMinutes()
   const isWeek = days.length > 1
 
+  /** Client Y within a column to minutes from `gridStart`. */
+  function minutesAt(clientY: number, el: HTMLElement): number {
+    const rect = el.getBoundingClientRect()
+    return gridStart + (clientY - rect.top + (scrollRef.current?.scrollTop ?? 0)) / pxPerMin
+  }
+
+  /** Snapped drop time that keeps the whole block inside the visible grid. */
+  function dropStartAt(clientY: number, el: HTMLElement, minutes: number): number {
+    const snapped = snap(minutesAt(clientY, el), snapMin)
+    const last = Math.max(gridStart, gridEnd - minutes)
+    return clamp(snapped, gridStart, last)
+  }
+
   return (
     <div ref={scrollRef} className="relative min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
       <div className="relative flex" style={{ height }}>
@@ -242,36 +271,45 @@ export function TimeGrid({
             const dayEnd = dayStart + 24 * 60 * MIN
             const dayItems = items.filter((i) => i.start >= dayStart && i.start < dayEnd && !i.allDay)
             const today = isToday(day)
+            const dropHere = dropAt?.day === dayIndex ? dropAt : null
 
             return (
               <div
                 key={dayIndex}
                 className={cn(
-                  'relative min-w-0 flex-1',
+                  'relative min-w-0 flex-1 transition-colors',
                   isWeek && 'border-l border-line',
-                  today && 'bg-signal/[0.03]',
+                  today && !dropHere && 'bg-signal/[0.03]',
+                  dropHere && 'bg-signal/[0.06]',
                 )}
                 style={{ height }}
                 onDragOver={(e) => {
-                  if (!onDropTask) return
-                  if (!e.dataTransfer.types.includes('text/tempo-task')) return
+                  if (!onDropItem) return
+                  if (!hasItemPayload(e)) return
                   e.preventDefault()
-                  e.dataTransfer.dropEffect = 'move'
+                  e.dataTransfer.dropEffect = 'copy'
+                  const payload = activeItemPayload()
+                  if (!payload) return
+                  setDropAt({
+                    day: dayIndex,
+                    start: dropStartAt(e.clientY, e.currentTarget, payload.minutes),
+                    payload,
+                  })
+                }}
+                onDragLeave={(e) => {
+                  // Only clear when the pointer actually leaves this column.
+                  if (e.currentTarget.contains(e.relatedTarget as Node)) return
+                  setDropAt((d) => (d && d.day === dayIndex ? null : d))
                 }}
                 onDrop={(e) => {
-                  if (!onDropTask) return
-                  const id = e.dataTransfer.getData('text/tempo-task')
-                  if (!id) return
+                  if (!onDropItem) return
+                  if (!hasItemPayload(e)) return
+                  const payload = readItemPayload(e)
+                  if (!payload) return
                   e.preventDefault()
-                  const rect = e.currentTarget.getBoundingClientRect()
-                  const raw =
-                    gridStart +
-                    (e.clientY - rect.top + (scrollRef.current?.scrollTop ?? 0)) / pxPerMin
-                  onDropTask(
-                    id,
-                    day,
-                    clamp(snap(raw - 10, snapMin), gridStart, gridEnd - snapMin),
-                  )
+                  const start = dropStartAt(e.clientY, e.currentTarget, payload.minutes)
+                  setDropAt(null)
+                  onDropItem(payload, day, start)
                 }}
                 onPointerDown={(e) => {
                   if (e.target !== e.currentTarget || e.button !== 0) return
@@ -402,6 +440,28 @@ export function TimeGrid({
                     </div>
                   )
                 })}
+
+                {/* drop ghost: where the dragged item will land */}
+                {dropHere && (
+                  <div
+                    className="pointer-events-none absolute inset-x-[3px] z-30 overflow-hidden rounded-[7px] border border-dashed border-signal px-[7px] py-[5px] shadow-[0_8px_24px_-8px_rgba(0,0,0,0.6)]"
+                    style={{
+                      top: (dropHere.start - gridStart) * pxPerMin,
+                      height: Math.max(20, dropHere.payload.minutes * pxPerMin - 3),
+                      background: 'color-mix(in oklab, var(--signal) 22%, var(--surface))',
+                    }}
+                  >
+                    <div className="truncate text-[11.5px] font-semibold leading-[1.25] text-ink">
+                      {dropHere.payload.title}
+                    </div>
+                    <div className="mono-clock tnum mt-[1px] text-[9.5px] leading-tight text-signal">
+                      {fmtTime(atMinutes(day, dropHere.start))} –{' '}
+                      {dropHere.start + dropHere.payload.minutes > 1440
+                        ? `+1d ${fmtTime(atMinutes(day, dropHere.start + dropHere.payload.minutes - 1440))}`
+                        : fmtTime(atMinutes(day, dropHere.start + dropHere.payload.minutes))}
+                    </div>
+                  </div>
+                )}
 
                 {/* inline composer */}
                 {composer && composer.day === dayIndex && (
