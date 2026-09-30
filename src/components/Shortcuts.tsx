@@ -45,7 +45,8 @@ const GROUPS: { title: string; rows: [string[], string][] }[] = [
     title: 'Everything else',
     rows: [
       [['⌘', 'K'], 'Command palette'],
-      [['/', ''], 'Search'],
+      [['F'], 'Open the focus timer'],
+      [['/'], 'Search'],
       [['⌘', 'Z'], 'Undo'],
       [['⇧', '⌘', 'Z'], 'Redo'],
       [['?'], 'This list'],
