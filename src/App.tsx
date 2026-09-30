@@ -37,8 +37,6 @@ const VIEW_BY_NUMBER: ViewId[] = [
 export default function App() {
   const view = useStore((s) => s.ui.view)
   const theme = useStore((s) => s.settings.theme)
-  const assistantOpen = useStore((s) => s.settings.assistantOpen)
-  const panel = useStore((s) => s.ui.panel)
   const planOpen = useStore((s) => s.ui.planOpen)
   const captureOpen = useStore((s) => s.ui.captureOpen)
   const [load, setLoad] = useState({ planned: 0, capacity: 0, items: 0 })
@@ -217,21 +215,20 @@ export default function App() {
           </div>
           {showCapture && <CaptureBar />}
         </main>
-
-        {view !== 'assistant' && assistantOpen && <Assistant />}
-        {panel && <DetailPanel />}
-        <PomodoroDock />
       </div>
 
       <CommandPalette />
       <PlanSheet open={planOpen} onClose={() => useStore.getState().setPlanOpen(false)} />
+      <Assistant />
+      <DetailPanel />
+      <PomodoroDock />
       <Shortcuts />
       <Toasts />
     </div>
   )
 }
 
-/** The sidebar "Assistant" entry: opens the dock rather than a dead page. */
+/** The sidebar "Assistant" entry: opens the coach rather than a dead page. */
 function AssistantGate() {
   const setAssistant = useStore((s) => s.setAssistant)
   const setView = useStore((s) => s.setView)
