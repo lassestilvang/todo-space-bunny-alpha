@@ -1,0 +1,496 @@
+@import 'tailwindcss';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ============================================================
+   TEMPO — design tokens
+   Concept: a precision instrument. Machined dark surfaces, hairline
+   rules, editorial serif for dates, tabular mono for every clock
+   reading. Amber is the "now" signal; the palette is warm-biased.
+   ============================================================ */
+
+:root,
+.dark {
+  --bg: #0a0b0d;
+  --bg-deep: #060708;
+  --surface: #101216;
+  --surface-2: #16191f;
+  --surface-3: #1d2129;
+  --raised: #222732;
+
+  --ink: #edeef2;
+  --ink-2: #b9bcc6;
+  --ink-3: #858a97;
+  --ink-4: #5c6270;
+
+  --line: rgb(255 255 255 / 0.07);
+  --line-2: rgb(255 255 255 / 0.12);
+  --line-strong: rgb(255 255 255 / 0.2);
+
+  --signal: #ffb020;
+  --signal-ink: #1b1200;
+  --focus: #6ee7ff;
+
+  --good: #4ed6a0;
+  --warn: #ffc53d;
+  --bad: #ff6b6b;
+
+  --grid-line: rgb(255 255 255 / 0.055);
+  --grid-line-major: rgb(255 255 255 / 0.1);
+  --offhours: rgb(255 255 255 / 0.016);
+
+  --sh-block: 0 1px 0 rgb(255 255 255 / 0.07) inset, 0 6px 18px -10px rgb(0 0 0 / 0.9);
+  --sh-pop: 0 1px 0 rgb(255 255 255 / 0.08) inset, 0 24px 60px -24px rgb(0 0 0 / 0.85), 0 2px 8px -4px rgb(0 0 0 / 0.6);
+  --grain-opacity: 0.035;
+}
+
+.light {
+  --bg: #f7f5f0;
+  --bg-deep: #efebe3;
+  --surface: #fffdf9;
+  --surface-2: #f6f3ec;
+  --surface-3: #ece7dd;
+  --raised: #ffffff;
+
+  --ink: #16171b;
+  --ink-2: #43464e;
+  --ink-3: #6f737d;
+  --ink-4: #9a9ea8;
+
+  --line: rgb(24 22 18 / 0.1);
+  --line-2: rgb(24 22 18 / 0.16);
+  --line-strong: rgb(24 22 18 / 0.3);
+
+  --signal: #d97706;
+  --signal-ink: #fffaf0;
+  --focus: #0891b2;
+
+  --good: #0f9d6f;
+  --warn: #c98a06;
+  --bad: #dc2626;
+
+  --grid-line: rgb(24 22 18 / 0.07);
+  --grid-line-major: rgb(24 22 18 / 0.13);
+  --offhours: rgb(24 22 18 / 0.028);
+
+  --sh-block: 0 1px 0 rgb(255 255 255 / 0.9) inset, 0 1px 2px rgb(24 22 18 / 0.08);
+  --sh-pop: 0 1px 0 rgb(255 255 255 / 0.9) inset, 0 24px 50px -26px rgb(24 22 18 / 0.35), 0 2px 6px -3px rgb(24 22 18 / 0.12);
+  --grain-opacity: 0.05;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-bg-deep: var(--bg-deep);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-raised: var(--raised);
+
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-ink-4: var(--ink-4);
+
+  --color-line: var(--line);
+  --color-line-2: var(--line-2);
+  --color-line-strong: var(--line-strong);
+
+  --color-signal: var(--signal);
+  --color-signal-ink: var(--signal-ink);
+  --color-focus: var(--focus);
+  --color-good: var(--good);
+  --color-warn: var(--warn);
+  --color-bad: var(--bad);
+
+  --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-serif: 'Instrument Serif', ui-serif, Georgia, serif;
+  --font-mono: 'Martian Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 9px;
+  --radius-lg: 13px;
+  --radius-xl: 18px;
+
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.4, 0.5, 1);
+
+  --shadow-block: var(--sh-block);
+  --shadow-pop: var(--sh-pop);
+}
+
+/* ---------- project palette (warm-biased, harmony over hue count) ---------- */
+@theme {
+  --color-c-ember: #ff7a45;
+  --color-c-saffron: #ffc53d;
+  --color-c-lime: #a8d84a;
+  --color-c-mint: #4ed6a0;
+  --color-c-aqua: #3fc8e0;
+  --color-c-sky: #5b9bff;
+  --color-c-iris: #9c7bff;
+  --color-c-orchid: #d96be0;
+  --color-c-rose: #ff6b9d;
+  --color-c-sand: #d8b48a;
+}
+
+.light {
+  --color-c-ember: #e2560f;
+  --color-c-saffron: #c98a06;
+  --color-c-lime: #6b9a12;
+  --color-c-mint: #0f9d6f;
+  --color-c-aqua: #0891b2;
+  --color-c-sky: #2563eb;
+  --color-c-iris: #7c3aed;
+  --color-c-orchid: #b429b8;
+  --color-c-rose: #db2f6b;
+  --color-c-sand: #9a6f3d;
+}
+
+/* ============================================================
+   Base
+   ============================================================ */
+@layer base {
+  * {
+    border-color: var(--line);
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    font-feature-settings: 'cv05' 1, 'ss03' 1;
+  }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.45;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+
+  button {
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+  }
+
+  input,
+  textarea,
+  select {
+    font: inherit;
+    color: inherit;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+    border-radius: 3px;
+  }
+
+  ::selection {
+    background: color-mix(in oklab, var(--signal) 35%, transparent);
+  }
+
+  /* Scrollbars: thin, self-effacing, still visible. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--line-2) transparent;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--line-2);
+    border: 3px solid transparent;
+    border-radius: 99px;
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--line-strong);
+    background-clip: content-box;
+    border: 3px solid transparent;
+  }
+  ::-webkitwebkit-scrollbar-corner {
+    background: transparent;
+  }
+}
+
+/* ============================================================
+   Atmosphere: grain + vignette. Gives flat fills a physical surface.
+   ============================================================ */
+@layer utilities {
+  .grain::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 60;
+    opacity: var(--grain-opacity);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  .vignette::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    background: radial-gradient(120% 80% at 50% -10%, transparent 40%, rgb(0 0 0 / 0.35) 100%);
+  }
+  .light .vignette::before {
+    background: radial-gradient(120% 80% at 50% -10%, transparent 45%, rgb(24 22 18 / 0.07) 100%);
+  }
+
+  /* Tabular, fixed-width digits for every clock reading in the app. */
+  .tnum {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum' 1, 'zero' 1;
+  }
+  .mono-clock {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+  }
+
+  .hairline {
+    border-color: var(--line);
+  }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+  }
+
+  .press {
+    transition:
+      transform 120ms var(--ease-out-expo),
+      background-color 140ms ease,
+      border-color 140ms ease,
+      color 140ms ease,
+      opacity 140ms ease;
+  }
+  .press:active:not(:disabled) {
+    transform: scale(0.975);
+  }
+
+  .no-drag {
+    -webkit-user-drag: none;
+    user-select: none;
+  }
+
+  /* Rise-in: staggered entrance used by panels and list rows. */
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(6px) scale(0.995);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes fade {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  @keyframes slide-left {
+    from {
+      opacity: 0;
+      transform: translateX(12px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes pop {
+    from {
+      opacity: 0;
+      transform: translateY(8px) scale(0.97);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes sweep {
+    from {
+      transform: scaleX(0);
+    }
+    to {
+      transform: scaleX(1);
+    }
+  }
+  @keyframes pulse-now {
+    0%,
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.55;
+      transform: scale(1.35);
+    }
+  }
+  .anim-rise {
+    animation: rise 320ms var(--ease-out-expo) both;
+  }
+  .anim-fade {
+    animation: fade 200ms ease both;
+  }
+  .anim-slide-left {
+    animation: slide-left 260ms var(--ease-out-expo) both;
+  }
+  .anim-pop {
+    animation: pop 180ms var(--ease-out-expo) both;
+  }
+  .anim-now-dot {
+    animation: pulse-now 2.4s ease-in-out infinite;
+  }
+}
+
+/* ============================================================
+   Calendar grid
+   ============================================================ */
+@layer components {
+  .cal-hour-row {
+    border-top: 1px solid var(--grid-line);
+  }
+  .cal-half-row {
+    border-top: 1px dashed color-mix(in oklab, var(--grid-line) 60%, transparent);
+  }
+
+  .cal-col-lines {
+    background-image: linear-gradient(to right, transparent calc(100% - 1px), var(--line) 0);
+  }
+
+  /* Time block surface: colour rail + tinted body, never a flat slab. */
+  .block-surface {
+    background:
+      linear-gradient(180deg, color-mix(in oklab, var(--blk) 26%, transparent), color-mix(in oklab, var(--blk) 12%, transparent)),
+      color-mix(in oklab, var(--blk) 8%, var(--surface));
+    box-shadow: var(--shadow-block);
+  }
+  .block-surface::before {
+    content: '';
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 3px;
+    background: var(--blk);
+    border-radius: 3px 0 0 3px;
+  }
+  .block-surface:hover {
+    background:
+      linear-gradient(180deg, color-mix(in oklab, var(--blk) 34%, transparent), color-mix(in oklab, var(--blk) 18%, transparent)),
+      color-mix(in oklab, var(--blk) 10%, var(--surface));
+  }
+
+  .ghost-drag {
+    opacity: 0.9;
+    cursor: grabbing;
+    z-index: 50;
+    box-shadow: var(--shadow-pop);
+    transform: scale(1.015);
+  }
+
+  .snap-line {
+    background: linear-gradient(
+      90deg,
+      transparent,
+      var(--signal) 12%,
+      var(--signal) 88%,
+      transparent
+    );
+    opacity: 0.85;
+  }
+
+  /* Prose for notes/markdown */
+  .prose-app {
+    color: var(--ink-2);
+    line-height: 1.65;
+  }
+  .prose-app > * + * {
+    margin-top: 0.65em;
+  }
+  .prose-app h1,
+  .prose-app h2,
+  .prose-app h3 {
+    color: var(--ink);
+    font-weight: 600;
+    line-height: 1.25;
+    margin-top: 1.1em;
+  }
+  .prose-app h1 {
+    font-size: 1.3em;
+  }
+  .prose-app h2 {
+    font-size: 1.15em;
+  }
+  .prose-app h3 {
+    font-size: 1em;
+  }
+  .prose-app ul,
+  .prose-app ol {
+    padding-left: 1.15em;
+  }
+  .prose-app ul {
+    list-style: disc;
+  }
+  .prose-app ol {
+    list-style: decimal;
+  }
+  .prose-app li + li {
+    margin-top: 0.2em;
+  }
+  .prose-app strong {
+    color: var(--ink);
+    font-weight: 600;
+  }
+  .prose-app code {
+    font-family: var(--font-mono);
+    font-size: 0.85em;
+    background: var(--surface-3);
+    padding: 0.1em 0.35em;
+    border-radius: 4px;
+  }
+  .prose-app a {
+    color: var(--signal);
+    text-underline-offset: 2px;
+  }
+  .prose-app blockquote {
+    border-left: 2px solid var(--line-2);
+    padding-left: 0.9em;
+    color: var(--ink-3);
+    font-style: italic;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
