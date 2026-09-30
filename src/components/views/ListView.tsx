@@ -221,10 +221,10 @@ export function ListView({ view, onPlan }: { view: ViewId; onPlan: () => void })
                 const color = cssColor(t.projectId ? projects[t.projectId]?.color : undefined)
                 const late = isOverdue(t)
                 return (
-                  <div
-                    key={t.id}
-                    className="group flex items-center gap-2.5 border-b border-line px-3 py-2 last:border-0 hover:bg-surface-2"
-                  >
+<div
+                      key={t.id}
+                      className="group flex items-center gap-2.5 border-b border-line px-3 py-2 last:border-0 hover:bg-surface-2"
+                    >
                     <Checkbox
                       checked={t.completed}
                       color={color}
