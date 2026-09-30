@@ -9,13 +9,12 @@ import {
   Search,
   SkipForward,
   Timer,
-  X,
 } from 'lucide-react'
 import type { ID } from '@/types'
 import { MIN, fmtTime } from '@/lib/date'
 import { cn, minutesLabel, sortTasks } from '@/lib/selectors'
 import { useStore } from '@/lib/store'
-import { Btn, Chip, IconBtn, Input, SectionTitle } from '@/components/ui'
+import { Btn, Chip, IconBtn, Input, Modal, SectionTitle } from '@/components/ui'
 
 /* ================================================================
    Timer core — a tiny module singleton.
@@ -553,21 +552,34 @@ function TimerEffects() {
   return null
 }
 
-/** The dock: the timer pill lives in the sidebar footer, and the panel docks
-    to the right edge of the workspace only while it is open. */
+/** The timer pill lives in the sidebar footer; the panel is a modal. */
 export function PomodoroDock() {
   const t = useTimer()
   return (
     <>
       <TimerEffects />
-      {t.open && (
-        <aside
-          aria-label="Focus timer"
-          className="anim-slide-left flex w-[336px] shrink-0 flex-col overflow-y-auto border-l border-line bg-bg"
-        >
-          <PomodoroPanel />
-        </aside>
-      )}
+      <Modal
+        open={t.open}
+        onClose={() => set({ open: false })}
+        width={420}
+        title={
+          <span className="flex w-full items-center gap-1.5">
+            {t.phase === 'focus' ? (
+              <Timer size={13} className="text-signal" aria-hidden />
+            ) : (
+              <Coffee size={13} className="text-ink-3" aria-hidden />
+            )}
+            <span className="text-[12.5px] font-semibold tracking-tight text-ink">
+              {PHASE_LABEL[t.phase]}
+            </span>
+            <span className="mono-clock tnum text-[10px] font-normal text-ink-4">
+              round {(t.rounds % LONG_EVERY) + 1}/{LONG_EVERY}
+            </span>
+          </span>
+        }
+      >
+        <PomodoroPanel />
+      </Modal>
     </>
   )
 }
@@ -582,27 +594,7 @@ function PomodoroPanel() {
   const p = total > 0 ? Math.max(0, Math.min(1, left / total)) : 0
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      {/* ------------------------------- header ------------------------------- */}
-      <div className="flex items-center justify-between gap-2 border-b border-line px-3.5 py-2.5">
-        <div className="flex items-center gap-1.5">
-          {t.phase === 'focus' ? (
-            <Timer size={13} className="text-signal" aria-hidden />
-          ) : (
-            <Coffee size={13} className="text-ink-3" aria-hidden />
-          )}
-          <span className="text-[12.5px] font-semibold tracking-tight text-ink">
-            {PHASE_LABEL[t.phase]}
-          </span>
-          <span className="mono-clock tnum text-[10px] text-ink-4">
-            round {(t.rounds % LONG_EVERY) + 1}/{LONG_EVERY}
-          </span>
-        </div>
-        <IconBtn label="Close timer" onClick={() => set({ open: false })}>
-          <X size={13} />
-        </IconBtn>
-      </div>
-
+    <div className="flex flex-col">
       <div className="flex flex-col items-center gap-3 px-4 py-4">
         <DrainingRing remaining={left} total={total} running={t.running}>
           <div className="text-center">
