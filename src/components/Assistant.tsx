@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import { CornerDownLeft, Eraser, Settings2, Sparkles, Undo2, X } from 'lucide-react'
+import { CornerDownLeft, Eraser, Settings2, Sparkles, Undo2 } from 'lucide-react'
 import { useStore } from '@/lib/store'
 import { applyActions, respond } from '@/lib/assistant'
 import { cn } from '@/lib/selectors'
-import { IconBtn, Kbd } from './ui'
+import { IconBtn, Kbd, Modal } from './ui'
 
 const STARTERS = [
   'Plan my day',
@@ -69,43 +69,46 @@ export function Assistant() {
   }
 
   return (
-    <div className="anim-slide-left relative z-40 flex w-[356px] shrink-0 flex-col border-l border-line bg-bg">
-      <div className="flex h-14 shrink-0 items-center gap-2 border-b border-line px-4">
-        <span
-          className="grid size-[24px] place-items-center rounded-[7px]"
-          style={{
-            background: settings.llm.enabled && settings.llm.apiKey
-              ? 'color-mix(in oklab, var(--color-c-orchid) 22%, transparent)'
-              : 'color-mix(in oklab, var(--signal) 18%, transparent)',
-            color: settings.llm.enabled && settings.llm.apiKey
-              ? 'var(--color-c-orchid)'
-              : 'var(--signal)',
-          }}
-        >
-          <Sparkles size={13} />
-        </span>
-        <div className="min-w-0 flex-1">
-          <div className="text-[12.5px] font-semibold text-ink">Coach</div>
-          <div className="truncate text-[10px] text-ink-4">
-            {settings.llm.enabled && settings.llm.apiKey
-              ? settings.llm.model
-              : 'local planner · no model connected'}
-          </div>
-        </div>
-        {chat.length > 0 && (
-          <IconBtn label="Clear conversation" onClick={clear}>
-            <Eraser size={13} />
+    <Modal
+      open={open}
+      onClose={() => setOpen(false)}
+      width={640}
+      title={
+        <span className="flex w-full items-center gap-2">
+          <span
+            className="grid size-[24px] shrink-0 place-items-center rounded-[7px]"
+            style={{
+              background:
+                settings.llm.enabled && settings.llm.apiKey
+                  ? 'color-mix(in oklab, var(--color-c-orchid) 22%, transparent)'
+                  : 'color-mix(in oklab, var(--signal) 18%, transparent)',
+              color:
+                settings.llm.enabled && settings.llm.apiKey ? 'var(--color-c-orchid)' : 'var(--signal)',
+            }}
+          >
+            <Sparkles size={13} />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[12.5px] font-semibold text-ink">Coach</span>
+            <span className="block truncate text-[10px] font-normal text-ink-4">
+              {settings.llm.enabled && settings.llm.apiKey
+                ? settings.llm.model
+                : 'local planner · no model connected'}
+            </span>
+          </span>
+          {chat.length > 0 && (
+            <IconBtn label="Clear conversation" onClick={clear}>
+              <Eraser size={13} />
+            </IconBtn>
+          )}
+          <IconBtn label="Assistant settings" onClick={() => setPanel({ kind: 'settings' })}>
+            <Settings2 size={13} />
           </IconBtn>
-        )}
-        <IconBtn label="Assistant settings" onClick={() => setPanel({ kind: 'settings' })}>
-          <Settings2 size={13} />
-        </IconBtn>
-        <IconBtn label="Close assistant" onClick={() => setOpen(false)}>
-          <X size={14} />
-        </IconBtn>
-      </div>
-
-      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3.5 py-3.5">
+        </span>
+      }
+    >
+      <div className="flex h-[min(58vh,540px)] flex-col">
+        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3.5 py-3.5">
         {chat.length === 0 && (
           <div className="anim-rise">
             <p className="font-serif text-[16px] leading-snug text-ink-2">
@@ -201,6 +204,7 @@ export function Assistant() {
           </button>
         </div>
       </div>
-    </div>
+      </div>
+    </Modal>
   )
 }
