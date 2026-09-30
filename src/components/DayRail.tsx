@@ -15,6 +15,7 @@ import { useStore } from '@/lib/store'
 import type { Task } from '@/types'
 import { atMinutes, fmtDuration, fmtRelativeDay, fmtTime, toKey } from '@/lib/date'
 import { cn, cssColor, isOverdue, sortTasks } from '@/lib/selectors'
+import { clearItemPayload, setItemPayload } from '@/lib/drag'
 import { Btn, Checkbox, Empty, Ring } from './ui'
 import { planRange, toBlocks } from '@/lib/planner'
 
@@ -182,11 +183,12 @@ export function DayRail({
                 <div
                   key={t.id}
                   draggable
-                  onDragStart={(e) => {
-                    e.dataTransfer.setData('text/tempo-task', t.id)
-                    e.dataTransfer.effectAllowed = 'move'
-                  }}
+                  onDragStart={(e) =>
+                    setItemPayload(e, { kind: 'task', id: t.id, minutes: t.durationMin || 30, title: t.title })
+                  }
+                  onDragEnd={clearItemPayload}
                   onClick={() => setPanel({ kind: 'task', id: t.id })}
+                  title="Drag onto the grid to schedule it"
                   className="group flex cursor-pointer items-start gap-2 rounded-[7px] px-1.5 py-1.5 hover:bg-surface-2"
                 >
                   <Checkbox
@@ -228,8 +230,12 @@ export function DayRail({
                 <div
                   key={t.id}
                   draggable
-                  onDragStart={(e) => e.dataTransfer.setData('text/tempo-task', t.id)}
+                  onDragStart={(e) =>
+                    setItemPayload(e, { kind: 'task', id: t.id, minutes: t.durationMin || 30, title: t.title })
+                  }
+                  onDragEnd={clearItemPayload}
                   onClick={() => setPanel({ kind: 'task', id: t.id })}
+                  title="Drag onto the grid to schedule it"
                   className="flex cursor-pointer items-center gap-2.5 rounded-[7px] px-1.5 py-1.5 hover:bg-surface-2"
                 >
                   <Checkbox checked={t.completed} label={t.title} onChange={() => toggleTask(t.id)} />
